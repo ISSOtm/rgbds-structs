@@ -30,7 +30,7 @@ Finally, you must close the declaration with `end_struct`. This is required to p
 
 Example of correct usage:
 ```
-    ; Please ensure you put spacing before the macro names, otherwise RGBDS will try to re-define them and error out
+    ; Please ensure you put whitespace before the macro names, otherwise RGBDS will try to re-define them and error out
     struct NPC
     words 1, YPos         ; 2 bytes
     words 1, XPos         ; 2 bytes
