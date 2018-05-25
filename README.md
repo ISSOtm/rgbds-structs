@@ -7,6 +7,7 @@ An attempt at using macros to add struct-like functionality to RGBDS.
 # Table of contents
 
 [Installing](#installing)
+
 [Usage](#usage)
 
 
