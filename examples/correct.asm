@@ -99,7 +99,7 @@ memcpy_small:
 
 SECTION "Structs", WRAM0 ; But it can be HRAM, WRAMX, or SRAM, too!
 
-    dstruct wPlayer
+    dstruct NPC, wPlayer
 
-    dstruct wBGPalette0
-    dstruct wOBJPalette0
+    dstruct RawPalette, wBGPalette0
+    dstruct RawPalette, wOBJPalette0
