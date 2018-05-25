@@ -81,6 +81,12 @@ SECTION "Code", ROM0
 
     ; ...
 
+DefaultPalette:
+    db $00, $00, $00
+    db $0A, $0A, $0A
+    db $15, $15, $15
+    db $1F, $1F, $1F
+
 
 memcpy_small:
     ld a, [de]
@@ -89,3 +95,11 @@ memcpy_small:
     dec c
     jr nz, memcpy_small
     ret
+
+
+SECTION "Structs", WRAM0 ; But it can be HRAM, WRAMX, or SRAM, too!
+
+    dstruct wPlayer
+
+    dstruct wBGPalette0
+    dstruct wOBJPalette0
