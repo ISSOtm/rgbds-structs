@@ -35,8 +35,8 @@ Example of correct usage:
     words 1, YPos         ; 2 bytes
     words 1, XPos         ; 2 bytes
     bytes 1, YBox         ; 1 byte
-    bytes 2, XBox         ; 1 byte
-    bytes 1, GfxID        ; 1 byte
+    bytes 1, XBox         ; 1 byte
+    bytes 2, GfxID        ; 2 bytes
     longs 2, MovementData ; 8 bytes
     end_struct
 ```
