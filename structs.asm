@@ -23,6 +23,51 @@
 ; SOFTWARE.
 
 
+; Yes I need this macro, for version checking.
+; What did you expect from a macro pack that mostly relies on code generation at compile time?
+; Also this is your last chance to turn back. It doesn't get any better.
+
+; strreplace variable_name, original_char, new_char
+strreplace: MACRO
+DOT_POS = STRIN("{\1}", \2)
+    IF DOT_POS != 0
+TMP equs STRCAT(STRSUB("{\1}", 1, DOT_POS + (-1)), STRCAT(\3, STRSUB("{\1}", DOT_POS + 1, STRLEN("{\1}") - DOT_POS)))
+        PURGE \1
+\1 equs "{TMP}"
+        PURGE TMP
+        strreplace \1, \2, \3
+    ENDC
+    IF DEF(DOT_POS)
+        PURGE DOT_POS
+    ENDC
+ENDM
+
+
+; rgbds_structs_version version_string
+; Call with the expected version string to ensure you're using a compatible version
+; Example: rgbds_structs_version 1.0.0
+rgbds_structs_version: MACRO
+CURRENT_VERSION equs "1,1,0"
+EXPECTED_VERSION equs "\1"
+    strreplace EXPECTED_VERSION, ".", "\,"
+check_ver: MACRO
+    IF \1 != \4 || \2 > \5 || \3 > \6
+        PURGE EXPECTED_VERSION
+    ENDC
+ENDM
+CHECK_VER_CALL equs "check_ver {EXPECTED_VERSION},{CURRENT_VERSION}"
+    CHECK_VER_CALL
+    IF !DEF(EXPECTED_VERSION)
+        strreplace CURRENT_VERSION, "\,", "."
+        FAIL "RGBDS-structs version \1 is required, which is incompatible with current version {CURRENT_VERSION}"
+    ENDC
+    PURGE CHECK_VER_CALL
+    PURGE check_ver
+    PURGE CURRENT_VERSION
+    PURGE EXPECTED_VERSION
+ENDM
+
+
 ; struct struct_name
 ; Begins a struct declaration
 struct: MACRO
