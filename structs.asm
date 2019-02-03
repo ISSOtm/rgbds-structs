@@ -1,7 +1,7 @@
 
 ; MIT License
 ;
-; Copyright (c) 2018 Eldred Habert
+; Copyright (c) 2018-2019 Eldred Habert
 ; Originally hosted at https://github.com/ISSOtm/rgbds-structs
 ;
 ; Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -60,7 +60,9 @@ field_name_from_id: MACRO
 FIELD_ID_STR equs "{\1}"
 STRUCT_FIELD equs STRCAT("{STRUCT_NAME}_field", STRSUB("{FIELD_ID_STR}", 2, STRLEN("{FIELD_ID_STR}") - 1))
 STRUCT_FIELD_NAME equs "{STRUCT_FIELD}_name"
-STRUCT_FIELD_SIZE equs "{STRUCT_FIELD}_size"
+STRUCT_FIELD_TYPE equs "{STRUCT_FIELD}_type"
+STRUCT_FIELD_NBEL equs "{STRUCT_FIELD}_nb_el" ; Number of elements
+STRUCT_FIELD_SIZE equs "{STRUCT_FIELD}_size" ; sizeof(type) * nb_el
 ENDM
 
 
@@ -77,7 +79,7 @@ STRUCT_FIELD_NAME equs "\"\3\""
     PURGE STRUCT_FIELD_NAME
 
 ; Set field offset
-STRUCT_FIELD \2 \1
+STRUCT_FIELD \2 (\1)
 ; Alias this in a human-comprehensive manner
 STRUCT_FIELD_NAME equs "{STRUCT_NAME}_\3"
 STRUCT_FIELD_NAME = STRUCT_FIELD
@@ -86,9 +88,15 @@ STRUCT_FIELD_NAME = STRUCT_FIELD
 CURRENT_RS RB 0
 STRUCT_FIELD_SIZE = CURRENT_RS - STRUCT_FIELD
 
+; Set properties
+STRUCT_FIELD_NBEL = \1
+STRUCT_FIELD_TYPE equs STRSUB("\2", 2, 1)
+
     PURGE FIELD_ID_STR
     PURGE STRUCT_FIELD
     PURGE STRUCT_FIELD_NAME
+    PURGE STRUCT_FIELD_TYPE
+    PURGE STRUCT_FIELD_NBEL
     PURGE STRUCT_FIELD_SIZE
     PURGE CURRENT_RS
 
@@ -114,29 +122,54 @@ longs: MACRO
 ENDM
 
 
-; dstruct struct_type, var_name
-; Allocates space for a struct in memory (primarily RAM)
+; dstruct struct_type, var_name[, ...]
+; Allocates space for a struct in memory
+; If no further arguments are supplied, the space is simply allocated (using `ds`)
+; Otherwise, the data is written to memory using the appropriate types
+; For example, a struct defined with `bytes 1, Field1` and `words 3, Field2` would have four extra arguments, one byte then three words.
 dstruct: MACRO
 NB_FIELDS equs "\1_nb_fields"
     IF !DEF(NB_FIELDS)
         FAIL "Struct \1 isn't defined!"
     ENDC
 STRUCT_NAME equs "\1" ; Target this struct for `field_name_from_id`
+VAR_NAME    equs "\2"
 
-\2:: ; Declare the struct's root
+VAR_NAME:: ; Declare the struct's root
 
 FIELD_ID = 0
     REPT NB_FIELDS
 
         field_name_from_id FIELD_ID
-FIELD_NAME equs STRCAT("\2_", STRUCT_FIELD_NAME)
+FIELD_NAME equs STRCAT("{VAR_NAME}_", STRUCT_FIELD_NAME)
 FIELD_NAME::
-        ds STRUCT_FIELD_SIZE
+        IF _NARG == 2 ; RAM definition, no data
+            ds STRUCT_FIELD_SIZE
+        ELSE
+TMP equs STRCAT("\{", STRCAT("{STRUCT_FIELD_TYPE}", "\}")) ; Temp var for double deref because "{{STRUCT_FIELD_TYPE}}" is a syntax error
+DATA_TYPE equs STRCAT("D", TMP)
+            PURGE TMP
+SHIFT_FIELDS equs ""
+            REPT STRUCT_FIELD_NBEL
+                DATA_TYPE \3
+                SHIFT
+                ; Stupid hack because RGBDS saves the macro arguments when entering REPT blocks
+TMP equs "{SHIFT_FIELDS}\n\tSHIFT"
+                PURGE SHIFT_FIELDS
+SHIFT_FIELDS equs "{TMP}"
+                PURGE TMP
+            ENDR
+            SHIFT_FIELDS
+            PURGE SHIFT_FIELDS
+            PURGE DATA_TYPE
+        ENDC
 
         ; Clean up vars for next iteration
         PURGE FIELD_ID_STR
         PURGE STRUCT_FIELD
         PURGE STRUCT_FIELD_NAME
+        PURGE STRUCT_FIELD_TYPE
+        PURGE STRUCT_FIELD_NBEL
         PURGE STRUCT_FIELD_SIZE
         PURGE FIELD_NAME
 
@@ -152,5 +185,6 @@ sizeof_\2 = sizeof_\1
     ; Clean up
     PURGE NB_FIELDS
     PURGE STRUCT_NAME
+    PURGE VAR_NAME
     PURGE FIELD_ID
 ENDM
