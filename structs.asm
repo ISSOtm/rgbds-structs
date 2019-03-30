@@ -47,7 +47,7 @@ ENDM
 ; Call with the expected version string to ensure you're using a compatible version
 ; Example: rgbds_structs_version 1.0.0
 rgbds_structs_version: MACRO
-CURRENT_VERSION equs "1,1,0"
+CURRENT_VERSION equs "1,2,0"
 EXPECTED_VERSION equs "\1"
     strreplace EXPECTED_VERSION, ".", "\,"
 check_ver: MACRO
@@ -232,4 +232,22 @@ sizeof_\2 = sizeof_\1
     PURGE STRUCT_NAME
     PURGE VAR_NAME
     PURGE FIELD_ID
+ENDM
+
+
+; dstructs struct_type, var_name
+; Allocates space for an array of structs in memory
+; Each struct will have the index appended to its name **as hex**
+; (for example: `dstructs 32, NPC, wNPC` will define wNPC0, wNPC1, and so on until wNPC1F)
+; This is a limitation because RGBASM does not provide an easy way to get the decimal representation of a number
+; Does not support data declarations because I think each struct should be defined individually for that purpose
+dstructs: MACRO
+STRUCT_ID = 0
+    REPT \1
+STRUCT_DEF equs STRCAT("dstruct \2, \3", STRSUB("{STRUCT_ID}", 2, STRLEN("{STRUCT_ID}") - 1))
+        STRUCT_DEF
+        PURGE STRUCT_DEF
+STRUCT_ID = STRUCT_ID + 1
+    ENDR
+    PURGE STRUCT_ID
 ENDM
