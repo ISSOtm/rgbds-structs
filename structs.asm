@@ -23,9 +23,19 @@
 ; SOFTWARE.
 
 
-; Yes I need this macro, for version checking.
-; What did you expect from a macro pack that mostly relies on code generation at compile time?
-; Also this is your last chance to turn back. It doesn't get any better.
+; !!! WARNING ABOUT READABILITY OF THIS CODE !!!
+;
+; RGBDS, being the venerable/old/decrepit (pick on depending on mood) assembler that it is, requires
+; all label, variable etc. definitions to be on column 0. As in, no whitespace allowed (otherwise, syntax error)
+; Meanwhile, these macros tend to use a lot of nesting (requiring indenting for readability),
+; as well as variable definitions (requiring none to work).
+; As you can probably tell, those two conflict and result in very poor readability
+; Sadly, there is nothing I can do against that short of using a special preprocessor,
+; which I refuse to do for usability's sake.
+; You have all my apologies, how little they may matter, if you are trying to read this code
+; I still did my best to use explicit comments and variable names, hope they will help!
+
+
 
 ; strreplace variable_name, original_char, new_char
 strreplace: MACRO
@@ -47,7 +57,7 @@ ENDM
 ; Call with the expected version string to ensure you're using a compatible version
 ; Example: rgbds_structs_version 1.0.0
 rgbds_structs_version: MACRO
-CURRENT_VERSION equs "1,2,0"
+CURRENT_VERSION equs "1,2,1"
 EXPECTED_VERSION equs "\1"
     strreplace EXPECTED_VERSION, ".", "\,"
 check_ver: MACRO
@@ -55,6 +65,7 @@ check_ver: MACRO
         PURGE EXPECTED_VERSION
     ENDC
 ENDM
+
 CHECK_VER_CALL equs "check_ver {EXPECTED_VERSION},{CURRENT_VERSION}"
     CHECK_VER_CALL
     IF !DEF(EXPECTED_VERSION)
@@ -84,12 +95,12 @@ ENDM
 ; end_struct
 ; Ends a struct declaration
 end_struct: MACRO
-; Set nb of fields
+    ; Set nb of fields
 STRUCT_NB_FIELDS equs "{STRUCT_NAME}_nb_fields"
 STRUCT_NB_FIELDS = NB_FIELDS
     PURGE STRUCT_NB_FIELDS
 
-; Set size of struct
+    ; Set size of struct
 STRUCT_SIZEOF equs "sizeof_{STRUCT_NAME}"
 STRUCT_SIZEOF RB 0
     PURGE STRUCT_SIZEOF
@@ -99,10 +110,12 @@ STRUCT_SIZEOF RB 0
 ENDM
 
 
-; field_name_from_id field_id
+; get_nth_field_info field_id
+; Defines EQUS strings pertaining to a struct's Nth field
 ; For internal use, please do not use externally
-field_name_from_id: MACRO
-FIELD_ID_STR equs "{\1}"
+get_nth_field_info: MACRO
+FIELD_ID_STR equs "{\1}" ; ID converted to a string (format: "0x2a")
+    ; Field's name
 STRUCT_FIELD equs STRCAT("{STRUCT_NAME}_field", STRSUB("{FIELD_ID_STR}", 2, STRLEN("{FIELD_ID_STR}") - 1))
 STRUCT_FIELD_NAME equs "{STRUCT_FIELD}_name"
 STRUCT_FIELD_TYPE equs "{STRUCT_FIELD}_type"
@@ -118,22 +131,22 @@ new_field: MACRO
         FAIL "Please start defining a struct, using `define_struct`"
     ENDC
 
-    field_name_from_id NB_FIELDS
-; Set field name
+    get_nth_field_info NB_FIELDS
+    ; Set field name (keep in mind `STRUCT_FIELD_NAME` is *itself* an EQUS!)
 STRUCT_FIELD_NAME equs "\"\3\""
     PURGE STRUCT_FIELD_NAME
 
-; Set field offset
+    ; Set field offset
 STRUCT_FIELD \2 (\1)
-; Alias this in a human-comprehensive manner
+    ; Alias this in a human-comprehensive manner
 STRUCT_FIELD_NAME equs "{STRUCT_NAME}_\3"
 STRUCT_FIELD_NAME = STRUCT_FIELD
 
-; Calculate field size
+    ; Compute field size
 CURRENT_RS RB 0
 STRUCT_FIELD_SIZE = CURRENT_RS - STRUCT_FIELD
 
-; Set properties
+    ; Set properties
 STRUCT_FIELD_NBEL = \1
 STRUCT_FIELD_TYPE equs STRSUB("\2", 2, 1)
 
@@ -167,7 +180,7 @@ longs: MACRO
 ENDM
 
 
-; dstruct struct_type, var_name[, ...]
+; dstruct struct_type, INSTANCE_NAME[, ...]
 ; Allocates space for a struct in memory
 ; If no further arguments are supplied, the space is simply allocated (using `ds`)
 ; Otherwise, the data is written to memory using the appropriate types
@@ -176,66 +189,186 @@ dstruct: MACRO
 NB_FIELDS equs "\1_nb_fields"
     IF !DEF(NB_FIELDS)
         FAIL "Struct \1 isn't defined!"
+    ELIF _NARG != 2 && _NARG != NB_FIELDS + 2 ; We must have either a RAM declaration (no data args) or a ROM one (RAM args + data args)
+EXPECTED_NARG = 2 + NB_FIELDS
+        FAIL "Invalid number of arguments, expected 2 or {EXPECTED_NARG} but got {_NARG}"
     ENDC
-STRUCT_NAME equs "\1" ; Target this struct for `field_name_from_id`
-VAR_NAME    equs "\2"
 
-VAR_NAME:: ; Declare the struct's root
+    ; Define the two fields required by `get_nth_field_info`
+STRUCT_NAME   equs "\1" ; Which struct `get_nth_field_info` should pull info about
+INSTANCE_NAME equs "\2" ; The instance's base name
 
+
+    ; RGBASM always expands `\X` macro args, so `IF _NARG > 2 && STRIN("\3", "=")` will error out when there are only 2 args
+    ; Therefore, the condition is checked here (we can't nest the `IF`s over there because that doesn't translate well to `ELSE`)
+IS_NAMED_INVOCATION = 0
+    IF _NARG > 2
+        IF STRIN("\3", "=")
+IS_NAMED_INVOCATION = 1
+        ENDC
+    ENDC
+
+    IF IS_NAMED_INVOCATION
+        ; This is a named instantiation, translate that to an ordered one
+        ; This is needed because data has to be laid out in order, so some translation is needed anyways
+        ; And finally, it's better to re-use the existing code at the cost of a single nested macro, I believe
+MACRO_CALL equs "dstruct \1, \2" ; This will be used later, but define it now because `SHIFT` will be run
+        ; In practice `SHIFT` has no effect outside of one when invoked inside of a REPT block, but I hope this behavior is changed (causes a problem elsewhere)
+
+ARG_NUM = 3
+        REPT NB_FIELDS
+            ; Find out which argument the current one is
+CUR_ARG equs "\3"
+            ; Remove all whitespace to obtain something like ".name=value" (whitespace are unnecessary and complexify parsing)
+            strreplace CUR_ARG, " ",  ""
+            strreplace CUR_ARG, "\t", ""
+
+EQUAL_POS = STRIN("{CUR_ARG}", "=")
+            IF EQUAL_POS == 0
+                FAIL "Argument #{ARG_NUM} (\3) does not contain an equal sign in this named instantiation"
+            ELIF STRCMP(STRSUB("{CUR_ARG}", 1, 1), ".")
+                FAIL "Argument #{ARG_NUM} (\3) does not start with a period"
+            ENDC
+
+FIELD_ID = -1
+CUR_FIELD_ID = 0
+            REPT NB_FIELDS
+
+                ; Get the name of the Nth field and compare
+TMP equs STRCAT(STRCAT("{STRUCT_NAME}_field", STRSUB("{CUR_FIELD_ID}", 2, STRLEN("{CUR_FIELD_ID}") - 1)), "_name")
+CUR_FIELD_NAME equs TMP
+                PURGE TMP
+
+                IF !STRCMP(STRUPR("{CUR_FIELD_NAME}"), STRUPR(STRSUB("{CUR_ARG}", 2, EQUAL_POS - 2)))
+                    ; Match found!
+                    IF FIELD_ID == -1
+FIELD_ID = CUR_FIELD_ID
+                    ELSE
+TMP equs STRCAT(STRCAT("{STRUCT_NAME}_field", STRSUB("{CUR_FIELD_ID}", 2, STRLEN("{CUR_FIELD_ID}") - 1)), "_name")
+CONFLICTING_FIELD_NAME equs TMP
+                PURGE TMP
+                        FAIL "Fields {CUR_FIELD_NAME} and {CONFLICTING_FIELD_NAME} have conflicting names (case-insensitive), cannot perform named instantiation"
+                    ENDC
+                ENDC
+
+                PURGE CUR_FIELD_NAME
+CUR_FIELD_ID = CUR_FIELD_ID + 1
+            ENDR
+            PURGE CUR_FIELD_ID
+
+            IF FIELD_ID == -1
+                FAIL "Argument #{ARG_NUM} (\3) does not match any field of the struct"
+            ENDC
+
+FIELD_ID_STR equs STRSUB("{FIELD_ID}", 2, STRLEN("{FIELD_ID}") - 1)
+INITIALIZER_NAME equs "FIELD_{FIELD_ID_STR}_INITIALIZER"
+            PURGE FIELD_ID_STR
+INITIALIZER_NAME equs STRSUB("{CUR_ARG}", EQUAL_POS + 1, STRLEN("{CUR_ARG}") - EQUAL_POS)
+            PURGE INITIALIZER_NAME
+
+            ; Go to next arg
+ARG_NUM = ARG_NUM + 1
+            SHIFT
+            PURGE CUR_ARG
+
+        ENDR
+
+        ; Now that we matched each named initializer to their order, invoke the macro again but without names
 FIELD_ID = 0
-    REPT NB_FIELDS
+        REPT NB_FIELDS
+TMP equs "{MACRO_CALL}"
+            PURGE MACRO_CALL
+FIELD_ID_STR equs STRSUB("{FIELD_ID}", 2, STRLEN("{FIELD_ID}") - 1)
+GET_INITIALIZER_VALUE equs "INITIALIZER_VALUE equs \"\{FIELD_{FIELD_ID_STR}_INITIALIZER\}\""
+            PURGE FIELD_ID_STR
+GET_INITIALIZER_VALUE
+            PURGE GET_INITIALIZER_VALUE
+MACRO_CALL equs "{TMP}, {INITIALIZER_VALUE}"
+            PURGE TMP
+            PURGE INITIALIZER_VALUE
+FIELD_ID = FIELD_ID + 1
+        ENDR
 
-        field_name_from_id FIELD_ID
-FIELD_NAME equs STRCAT("{VAR_NAME}_", STRUCT_FIELD_NAME)
+        PURGE FIELD_ID
+        ; Clean up vars for nested invocation, otherwise some `equs` will be expanded
+        PURGE INSTANCE_NAME
+        PURGE STRUCT_NAME
+        PURGE IS_NAMED_INVOCATION
+        PURGE NB_FIELDS
+
+        MACRO_CALL ; Now do call the macro
+        PURGE MACRO_CALL
+
+
+    ELSE
+
+
+INSTANCE_NAME:: ; Declare the struct's root
+
+        ; Start defining fields
+FIELD_ID = 0
+        REPT NB_FIELDS
+
+            get_nth_field_info FIELD_ID
+
+FIELD_NAME equs STRCAT("{INSTANCE_NAME}_", STRUCT_FIELD_NAME)
 FIELD_NAME::
-        IF _NARG == 2 ; RAM definition, no data
-            ds STRUCT_FIELD_SIZE
-        ELSE
+
+            ; We have defined a label, but now we also need the data backing it
+            ; There are basically two options:
+            IF _NARG == 2 ; RAM definition, no data
+                ds STRUCT_FIELD_SIZE
+            ELSE
+
 TMP equs STRCAT("\{", STRCAT("{STRUCT_FIELD_TYPE}", "\}")) ; Temp var for double deref because "{{STRUCT_FIELD_TYPE}}" is a syntax error
 DATA_TYPE equs STRCAT("D", TMP)
-            PURGE TMP
-SHIFT_FIELDS equs ""
-            REPT STRUCT_FIELD_NBEL
-                DATA_TYPE \3
-                SHIFT
-                ; Stupid hack because RGBDS saves the macro arguments when entering REPT blocks
-TMP equs "{SHIFT_FIELDS}\n\tSHIFT"
-                PURGE SHIFT_FIELDS
-SHIFT_FIELDS equs "{TMP}"
                 PURGE TMP
-            ENDR
-            SHIFT_FIELDS
-            PURGE SHIFT_FIELDS
-            PURGE DATA_TYPE
-        ENDC
 
-        ; Clean up vars for next iteration
-        PURGE FIELD_ID_STR
-        PURGE STRUCT_FIELD
-        PURGE STRUCT_FIELD_NAME
-        PURGE STRUCT_FIELD_TYPE
-        PURGE STRUCT_FIELD_NBEL
-        PURGE STRUCT_FIELD_SIZE
-        PURGE FIELD_NAME
+SHIFT_FIELDS equs ""
+                REPT STRUCT_FIELD_NBEL
+                    DATA_TYPE \3
+                    SHIFT
+                    ; Stupid hack because RGBDS saves the macro arguments when entering REPT blocks
+TMP equs "{SHIFT_FIELDS}\n\tSHIFT"
+                    PURGE SHIFT_FIELDS
+SHIFT_FIELDS equs "{TMP}"
+                    PURGE TMP
+                ENDR
+                SHIFT_FIELDS
+                PURGE SHIFT_FIELDS
+                PURGE DATA_TYPE
+            ENDC
+
+            ; Clean up vars for next iteration
+            PURGE FIELD_ID_STR
+            PURGE STRUCT_FIELD
+            PURGE STRUCT_FIELD_NAME
+            PURGE STRUCT_FIELD_TYPE
+            PURGE STRUCT_FIELD_NBEL
+            PURGE STRUCT_FIELD_SIZE
+            PURGE FIELD_NAME
 
 FIELD_ID = FIELD_ID + 1
-    ENDR
+        ENDR
 
 
-    ; Define variable's properties from struct's
+       ; Define variable's properties from struct's
 \2_nb_fields = NB_FIELDS
 sizeof_\2 = sizeof_\1
 
 
-    ; Clean up
-    PURGE NB_FIELDS
-    PURGE STRUCT_NAME
-    PURGE VAR_NAME
-    PURGE FIELD_ID
+        ; Clean up
+        PURGE FIELD_ID
+        ; Make sure to keep what's here in sync with cleanup at the end of a named invocation
+        PURGE INSTANCE_NAME
+        PURGE STRUCT_NAME
+        PURGE IS_NAMED_INVOCATION
+        PURGE NB_FIELDS
+    ENDC
 ENDM
 
 
-; dstructs struct_type, var_name
+; dstructs nb_structs, struct_type, INSTANCE_NAME
 ; Allocates space for an array of structs in memory
 ; Each struct will have the index appended to its name **as hex**
 ; (for example: `dstructs 32, NPC, wNPC` will define wNPC0, wNPC1, and so on until wNPC1F)
@@ -244,10 +377,12 @@ ENDM
 dstructs: MACRO
 STRUCT_ID = 0
     REPT \1
-STRUCT_DEF equs STRCAT("dstruct \2, \3", STRSUB("{STRUCT_ID}", 2, STRLEN("{STRUCT_ID}") - 1))
-        STRUCT_DEF
-        PURGE STRUCT_DEF
+STRUCT_ID_STR equs STRSUB("{STRUCT_ID}", 2, STRLEN("{STRUCT_ID}") - 1)
+        dstruct \2, \3{STRUCT_ID_STR}
+
+        PURGE STRUCT_ID_STR
 STRUCT_ID = STRUCT_ID + 1
     ENDR
+
     PURGE STRUCT_ID
 ENDM
