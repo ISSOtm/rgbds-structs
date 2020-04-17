@@ -114,9 +114,8 @@ ENDM
 ; Defines EQUS strings pertaining to a struct's Nth field
 ; For internal use, please do not use externally
 get_nth_field_info: MACRO
-FIELD_ID_STR equs "{\1}" ; ID converted to a string (format: "0x2a")
     ; Field's name
-STRUCT_FIELD equs STRCAT("{STRUCT_NAME}_field", STRSUB("{FIELD_ID_STR}", 2, STRLEN("{FIELD_ID_STR}") - 1))
+STRUCT_FIELD equs "{STRUCT_NAME}_field{d:\1}"
 STRUCT_FIELD_NAME equs "{STRUCT_FIELD}_name"
 STRUCT_FIELD_TYPE equs "{STRUCT_FIELD}_type"
 STRUCT_FIELD_NBEL equs "{STRUCT_FIELD}_nb_el" ; Number of elements
@@ -150,7 +149,6 @@ STRUCT_FIELD_SIZE = CURRENT_RS - STRUCT_FIELD
 STRUCT_FIELD_NBEL = \1
 STRUCT_FIELD_TYPE equs STRSUB("\2", 2, 1)
 
-    PURGE FIELD_ID_STR
     PURGE STRUCT_FIELD
     PURGE STRUCT_FIELD_NAME
     PURGE STRUCT_FIELD_TYPE
@@ -191,7 +189,7 @@ NB_FIELDS equs "\1_nb_fields"
         FAIL "Struct \1 isn't defined!"
     ELIF _NARG != 2 && _NARG != NB_FIELDS + 2 ; We must have either a RAM declaration (no data args) or a ROM one (RAM args + data args)
 EXPECTED_NARG = 2 + NB_FIELDS
-        FAIL "Invalid number of arguments, expected 2 or {EXPECTED_NARG} but got {_NARG}"
+        FAIL "Invalid number of arguments, expected 2 or {d:EXPECTED_NARG} but got {d:_NARG}"
     ENDC
 
     ; Define the two fields required by `get_nth_field_info`
@@ -235,7 +233,7 @@ CUR_FIELD_ID = 0
             REPT NB_FIELDS
 
                 ; Get the name of the Nth field and compare
-TMP equs STRCAT(STRCAT("{STRUCT_NAME}_field", STRSUB("{CUR_FIELD_ID}", 2, STRLEN("{CUR_FIELD_ID}") - 1)), "_name")
+TMP equs "{STRUCT_NAME}_field{d:CUR_FIELD_ID}_name"
 CUR_FIELD_NAME equs TMP
                 PURGE TMP
 
@@ -244,9 +242,9 @@ CUR_FIELD_NAME equs TMP
                     IF FIELD_ID == -1
 FIELD_ID = CUR_FIELD_ID
                     ELSE
-TMP equs STRCAT(STRCAT("{STRUCT_NAME}_field", STRSUB("{CUR_FIELD_ID}", 2, STRLEN("{CUR_FIELD_ID}") - 1)), "_name")
+TMP equs "{STRUCT_NAME}_field{d:CUR_FIELD_ID}_name"
 CONFLICTING_FIELD_NAME equs TMP
-                PURGE TMP
+                        PURGE TMP
                         FAIL "Fields {CUR_FIELD_NAME} and {CONFLICTING_FIELD_NAME} have conflicting names (case-insensitive), cannot perform named instantiation"
                     ENDC
                 ENDC
@@ -257,12 +255,10 @@ CUR_FIELD_ID = CUR_FIELD_ID + 1
             PURGE CUR_FIELD_ID
 
             IF FIELD_ID == -1
-                FAIL "Argument #{ARG_NUM} (\3) does not match any field of the struct"
+                FAIL "Argument #{d:ARG_NUM} (\3) does not match any field of the struct"
             ENDC
 
-FIELD_ID_STR equs STRSUB("{FIELD_ID}", 2, STRLEN("{FIELD_ID}") - 1)
-INITIALIZER_NAME equs "FIELD_{FIELD_ID_STR}_INITIALIZER"
-            PURGE FIELD_ID_STR
+INITIALIZER_NAME equs "FIELD_{d:FIELD_ID}_INITIALIZER"
 INITIALIZER_NAME equs STRSUB("{CUR_ARG}", EQUAL_POS + 1, STRLEN("{CUR_ARG}") - EQUAL_POS)
             PURGE INITIALIZER_NAME
 
@@ -278,9 +274,7 @@ FIELD_ID = 0
         REPT NB_FIELDS
 TMP equs "{MACRO_CALL}"
             PURGE MACRO_CALL
-FIELD_ID_STR equs STRSUB("{FIELD_ID}", 2, STRLEN("{FIELD_ID}") - 1)
-GET_INITIALIZER_VALUE equs "INITIALIZER_VALUE equs \"\{FIELD_{FIELD_ID_STR}_INITIALIZER\}\""
-            PURGE FIELD_ID_STR
+GET_INITIALIZER_VALUE equs "INITIALIZER_VALUE equs \"\{FIELD_{d:FIELD_ID}_INITIALIZER\}\""
 GET_INITIALIZER_VALUE
             PURGE GET_INITIALIZER_VALUE
 MACRO_CALL equs "{TMP}, {INITIALIZER_VALUE}"
@@ -304,6 +298,9 @@ FIELD_ID = FIELD_ID + 1
 
 
 INSTANCE_NAME:: ; Declare the struct's root
+        ; Define instance's properties from struct's
+\2_nb_fields = NB_FIELDS
+sizeof_\2 = sizeof_\1
 
         ; Start defining fields
 FIELD_ID = 0
@@ -320,27 +317,16 @@ FIELD_NAME::
                 ds STRUCT_FIELD_SIZE
             ELSE
 
-TMP equs STRCAT("\{", STRCAT("{STRUCT_FIELD_TYPE}", "\}")) ; Temp var for double deref because "{{STRUCT_FIELD_TYPE}}" is a syntax error
-DATA_TYPE equs STRCAT("D", TMP)
-                PURGE TMP
+DATA_TYPE equs STRCAT("D", {{STRUCT_FIELD_TYPE}})
 
-SHIFT_FIELDS equs ""
                 REPT STRUCT_FIELD_NBEL
                     DATA_TYPE \3
                     SHIFT
-                    ; Stupid hack because RGBDS saves the macro arguments when entering REPT blocks
-TMP equs "{SHIFT_FIELDS}\n\tSHIFT"
-                    PURGE SHIFT_FIELDS
-SHIFT_FIELDS equs "{TMP}"
-                    PURGE TMP
                 ENDR
-                SHIFT_FIELDS
-                PURGE SHIFT_FIELDS
                 PURGE DATA_TYPE
             ENDC
 
             ; Clean up vars for next iteration
-            PURGE FIELD_ID_STR
             PURGE STRUCT_FIELD
             PURGE STRUCT_FIELD_NAME
             PURGE STRUCT_FIELD_TYPE
@@ -350,11 +336,6 @@ SHIFT_FIELDS equs "{TMP}"
 
 FIELD_ID = FIELD_ID + 1
         ENDR
-
-
-       ; Define variable's properties from struct's
-\2_nb_fields = NB_FIELDS
-sizeof_\2 = sizeof_\1
 
 
         ; Clean up
@@ -377,10 +358,7 @@ ENDM
 dstructs: MACRO
 STRUCT_ID = 0
     REPT \1
-STRUCT_ID_STR equs STRSUB("{STRUCT_ID}", 2, STRLEN("{STRUCT_ID}") - 1)
-        dstruct \2, \3{STRUCT_ID_STR}
-
-        PURGE STRUCT_ID_STR
+        dstruct \2, \3{X:STRUCT_ID}
 STRUCT_ID = STRUCT_ID + 1
     ENDR
 
