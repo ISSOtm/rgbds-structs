@@ -52,6 +52,20 @@ TMP equs STRCAT(STRSUB("{\1}", 1, DOT_POS + (-1)), STRCAT(\3, STRSUB("{\1}", DOT
     ENDC
 ENDM
 
+lstrip: MACRO
+FIRST_CHAR equs STRSUB("{\1}", 1, 1)
+    IF !STRCMP("{FIRST_CHAR}", " ") || !STRCMP("{FIRST_CHAR}", "\t")
+        PURGE FIRST_CHAR
+TMP equs STRSUB("{\1}", 2, STRLEN("{\1}") - 1)
+        PURGE \1
+\1 equs "{TMP}"
+        PURGE TMP
+        lstrip \1
+    ELSE
+        PURGE FIRST_CHAR
+    ENDC
+ENDM
+
 
 ; rgbds_structs_version version_string
 ; Call with the expected version string to ensure you're using a compatible version
@@ -218,8 +232,7 @@ ARG_NUM = 3
             ; Find out which argument the current one is
 CUR_ARG equs "\3"
             ; Remove all whitespace to obtain something like ".name=value" (whitespace are unnecessary and complexify parsing)
-            strreplace CUR_ARG, " ",  ""
-            strreplace CUR_ARG, "\t", ""
+            lstrip CUR_ARG
 
 EQUAL_POS = STRIN("{CUR_ARG}", "=")
             IF EQUAL_POS == 0
