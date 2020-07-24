@@ -141,7 +141,7 @@ ENDM
 ; For internal use, please do not use externally
 new_field: MACRO
     IF !DEF(STRUCT_NAME) || !DEF(NB_FIELDS)
-        FAIL "Please start defining a struct, using `define_struct`"
+        FAIL "Please start defining a struct, using `struct`"
     ENDC
 
     get_nth_field_info NB_FIELDS
