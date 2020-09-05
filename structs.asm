@@ -331,7 +331,7 @@ FIELD_NAME::
                 ds STRUCT_FIELD_SIZE
             ELSE
 
-DATA_TYPE equs STRCAT("D", {{STRUCT_FIELD_TYPE}})
+DATA_TYPE equs STRCAT("D", "{{STRUCT_FIELD_TYPE}}")
 
                 REPT STRUCT_FIELD_NBEL
                     DATA_TYPE \3
