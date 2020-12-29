@@ -66,19 +66,19 @@ TMP equs STRSUB("{\1}", 2, STRLEN("{\1}") - 1)
     ENDC
 ENDM
 
-
-; rgbds_structs_version version_string
-; Call with the expected version string to ensure you're using a compatible version
-; Example: rgbds_structs_version 1.0.0
-rgbds_structs_version: MACRO
-CURRENT_VERSION equs "1,2,1"
-EXPECTED_VERSION equs "\1"
-    strreplace EXPECTED_VERSION, ".", "\,"
 check_ver: MACRO
     IF \1 != \4 || \2 > \5 || \3 > \6
         PURGE EXPECTED_VERSION
     ENDC
 ENDM
+
+; rgbds_structs_version version_string
+; Call with the expected version string to ensure you're using a compatible version
+; Example: rgbds_structs_version 1.0.0
+rgbds_structs_version: MACRO
+CURRENT_VERSION equs "1,3,0"
+EXPECTED_VERSION equs "\1"
+    strreplace EXPECTED_VERSION, ".", "\,"
 
 CHECK_VER_CALL equs "check_ver {EXPECTED_VERSION},{CURRENT_VERSION}"
     CHECK_VER_CALL
