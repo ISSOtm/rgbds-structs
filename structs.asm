@@ -173,6 +173,42 @@ STRUCT_FIELD_TYPE equs STRSUB("\2", 2, 1)
 NB_FIELDS = NB_FIELDS + 1
 ENDM
 
+; dunion union_name
+; Defines an Alias for the next field
+dunion: MACRO
+    IF !DEF(STRUCT_NAME) || !DEF(NB_FIELDS)
+        FAIL "Please start defining a struct, using `define_struct`"
+    ENDC
+
+    get_nth_field_info NB_FIELDS
+    ; Set field name (keep in mind `STRUCT_FIELD_NAME` is *itself* an EQUS!)
+STRUCT_FIELD_NAME equs "\"\1\""
+    PURGE STRUCT_FIELD_NAME
+
+    ; Set field offset
+STRUCT_FIELD RB 0
+    ; Alias this in a human-comprehensive manner
+STRUCT_FIELD_NAME equs "{STRUCT_NAME}_\1"
+STRUCT_FIELD_NAME = STRUCT_FIELD
+
+    ; Compute field size
+CURRENT_RS RB 0
+STRUCT_FIELD_SIZE = CURRENT_RS - STRUCT_FIELD
+
+    ; Set properties
+STRUCT_FIELD_NBEL = 0
+STRUCT_FIELD_TYPE equs STRSUB("RB", 2, 1)
+
+    PURGE STRUCT_FIELD
+    PURGE STRUCT_FIELD_NAME
+    PURGE STRUCT_FIELD_TYPE
+    PURGE STRUCT_FIELD_NBEL
+    PURGE STRUCT_FIELD_SIZE
+    PURGE CURRENT_RS
+
+NB_FIELDS = NB_FIELDS + 1
+ENDM
+
 ; bytes nb_bytes, field_name
 ; Defines a field of N bytes
 bytes: MACRO
