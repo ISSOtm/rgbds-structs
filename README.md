@@ -66,6 +66,24 @@ It is unnecessary to put a label right before `dstruct`, since a label is declar
 
 Two extra constants are declared, that mirror the struct's: `sizeof_Player` would be equal to `sizeof_NPC`, and `Player_nb_fields` would equal `NPC_nb_fields`. These constants will keep their values even if the originals, such as `sizeof_NPC`, are `PURGE`'d.
 
+## Declaring a union
+
+Unions are simply an alias for the following field. To define a union, use `dunion UnionName`.
+
+```
+    ; Flags and Data will point to the same field
+    dunion Flags
+    bytes 1, Data
+```
+
+This is not possible:
+```
+    dunion words 1 VectorPos
+    bytes 1 XPos
+    bytes 1 YPos
+```
+However, `dunion VectorPos` will have the same effect.
+
 
 
 # Credits
