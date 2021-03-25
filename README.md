@@ -1,4 +1,3 @@
-
 # RGBDS structs
 
 An attempt at using macros to add struct-like functionality to RGBDS.
@@ -14,7 +13,7 @@ An attempt at using macros to add struct-like functionality to RGBDS.
 
 This doesn't actually require any installing, only to `INCLUDE` the file `structs.asm` in your project. Examples can be found in the `examples` folder. This project is licensed under the MIT license.
 
-This is confirmed to work with RGBDS 0.3.7, but should also work with versions 0.3.3 and newer. If you find a compatibility issue, please file it [here](https://github.com/ISSOtm/rgbds-structs/issues/new).
+The latest RGBDS-structs version is **2.0.0**. It will only work with RGBDS 0.5.1 and newer. The previous version, 1.3.0, is confirmed to work with RGBDS 0.3.7, but should also work with versions 0.3.3 and newer. If you find a compatibility issue, please file it [here](https://github.com/ISSOtm/rgbds-structs/issues/new).
 
 
 # Usage
@@ -23,7 +22,7 @@ This is confirmed to work with RGBDS 0.3.7, but should also work with versions 0
 
 Begin the declaration with `struct StructName`. This need not be in a `SECTION`, and it is rather recommended to declare structs in header files, as with C.
 
-Then, declare each member; the declaration style is inspired by RGBDS' `_RS` command group: the macro name is the field type, the first argument dictates how many units the argument uses, and the second argument gives the field name.
+Then, declare each member. The declaration style is inspired by RGBDS' `_RS` command group: the macro name is the field type, the first argument dictates how many units the argument uses, and the second argument gives the field name.
 
 Finally, you must close the declaration with `end_struct`. This is required to properly define all of the struct's variables, and to be able to declare another struct (which will otherwise fail with a descriptive error message). Please note that you can forget to add `end_struct` and not get any error messages, so please be careful.
 

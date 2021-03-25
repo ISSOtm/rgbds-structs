@@ -1,7 +1,6 @@
-
 ; MIT License
 ;
-; Copyright (c) 2018-2019 Eldred Habert
+; Copyright (c) 2018-2021 Eldred Habert and contributors
 ; Originally hosted at https://github.com/ISSOtm/rgbds-structs
 ;
 ; Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,358 +22,287 @@
 ; SOFTWARE.
 
 
-; !!! WARNING ABOUT READABILITY OF THIS CODE !!!
-;
-; RGBDS, being the venerable/old/decrepit (pick on depending on mood) assembler that it is, requires
-; all label, variable etc. definitions to be on column 0. As in, no whitespace allowed (otherwise, syntax error)
-; Meanwhile, these macros tend to use a lot of nesting (requiring indenting for readability),
-; as well as variable definitions (requiring none to work).
-; As you can probably tell, those two conflict and result in very poor readability
-; Sadly, there is nothing I can do against that short of using a special preprocessor,
-; which I refuse to do for usability's sake.
-; You have all my apologies, how little they may matter, if you are trying to read this code
-; I still did my best to use explicit comments and variable names, hope they will help!
 
+; Call with the expected RGBDS-structs version string to ensure your code
+; is compatible with the INCLUDEd version of RGBDS-structs.
+; Example: `rgbds_structs_version 2.0.0`
+MACRO rgbds_structs_version ; version_string
+    DEF CURRENT_VERSION EQUS "2,0,0"
 
+    ; Undefine `EXPECTED_VERSION` if it does not match `CURRENT_VERSION`
+    DEF EXPECTED_VERSION EQUS STRRPL("\1", ".", ",")
+    check_ver {EXPECTED_VERSION}, {CURRENT_VERSION}
 
-; strreplace variable_name, original_char, new_char
-strreplace: MACRO
-DOT_POS = STRIN("{\1}", \2)
-    IF DOT_POS != 0
-TMP equs STRCAT(STRSUB("{\1}", 1, DOT_POS + (-1)), STRCAT(\3, STRSUB("{\1}", DOT_POS + 1, STRLEN("{\1}") - DOT_POS)))
-        PURGE \1
-\1 equs "{TMP}"
-        PURGE TMP
-        strreplace \1, \2, \3
+    IF !DEF(EXPECTED_VERSION)
+        FAIL STRCAT("RGBDS-structs version \1 is required, ", \
+                    "which is incompatible with current version ", \
+                    STRRPL("{CURRENT_VERSION}", ",", "."))
     ENDC
-    IF DEF(DOT_POS)
-        PURGE DOT_POS
-    ENDC
+
+    PURGE CURRENT_VERSION, EXPECTED_VERSION
 ENDM
 
-lstrip: MACRO
-FIRST_CHAR equs STRSUB("{\1}", 1, 1)
-    IF !STRCMP("{FIRST_CHAR}", " ") || !STRCMP("{FIRST_CHAR}", "\t")
-        PURGE FIRST_CHAR
-TMP equs STRSUB("{\1}", 2, STRLEN("{\1}") - 1)
-        PURGE \1
-\1 equs "{TMP}"
-        PURGE TMP
-        lstrip \1
-    ELSE
-        PURGE FIRST_CHAR
-    ENDC
-ENDM
-
-check_ver: MACRO
+; Checks whether trios of version components match.
+; Used internally by `rgbds_structs_version`.
+MACRO check_ver ; expected major, minor, patch, current major, minor, patch
     IF \1 != \4 || \2 > \5 || \3 > \6
         PURGE EXPECTED_VERSION
     ENDC
 ENDM
 
-; rgbds_structs_version version_string
-; Call with the expected version string to ensure you're using a compatible version
-; Example: rgbds_structs_version 1.0.0
-rgbds_structs_version: MACRO
-CURRENT_VERSION equs "1,3,0"
-EXPECTED_VERSION equs "\1"
-    strreplace EXPECTED_VERSION, ".", "\,"
 
-CHECK_VER_CALL equs "check_ver {EXPECTED_VERSION},{CURRENT_VERSION}"
-    CHECK_VER_CALL
-    IF !DEF(EXPECTED_VERSION)
-        strreplace CURRENT_VERSION, "\,", "."
-        FAIL "RGBDS-structs version \1 is required, which is incompatible with current version {CURRENT_VERSION}"
-    ENDC
-    PURGE CHECK_VER_CALL
-    PURGE check_ver
-    PURGE CURRENT_VERSION
-    PURGE EXPECTED_VERSION
-ENDM
-
-
-; struct struct_name
-; Begins a struct declaration
-struct: MACRO
-    IF DEF(NB_FIELDS)
+; Begins a struct declaration.
+MACRO struct ; struct_name
+    IF DEF(STRUCT_NAME) || DEF(NB_FIELDS)
         FAIL "Please close struct definitions using `end_struct`"
     ENDC
 
-STRUCT_NAME equs "\1"
+    ; Define two internal variables for field definitions
+    DEF STRUCT_NAME EQUS "\1"
+    DEF NB_FIELDS = 0
 
-NB_FIELDS = 0
+    ; Initialize _RS to 0 for defining offset constants
     RSRESET
 ENDM
 
-; end_struct
-; Ends a struct declaration
-end_struct: MACRO
-    ; Set nb of fields
-STRUCT_NB_FIELDS equs "{STRUCT_NAME}_nb_fields"
-STRUCT_NB_FIELDS = NB_FIELDS
-    PURGE STRUCT_NB_FIELDS
+; Ends a struct declaration.
+MACRO end_struct
+    ; Define the number of fields and size in bytes
+    DEF {STRUCT_NAME}_nb_fields EQU NB_FIELDS
+    DEF sizeof_{STRUCT_NAME}    EQU _RS
 
-    ; Set size of struct
-STRUCT_SIZEOF equs "sizeof_{STRUCT_NAME}"
-STRUCT_SIZEOF RB 0
-    PURGE STRUCT_SIZEOF
-
-    PURGE NB_FIELDS
-    PURGE STRUCT_NAME
+    ; Purge the internal variables defined by `struct`
+    PURGE STRUCT_NAME, NB_FIELDS
 ENDM
 
 
-; get_nth_field_info field_id
-; Defines EQUS strings pertaining to a struct's Nth field
-; For internal use, please do not use externally
-get_nth_field_info: MACRO
-    ; Field's name
-STRUCT_FIELD equs "{STRUCT_NAME}_field{d:\1}"
-STRUCT_FIELD_NAME equs "{STRUCT_FIELD}_name"
-STRUCT_FIELD_TYPE equs "{STRUCT_FIELD}_type"
-STRUCT_FIELD_NBEL equs "{STRUCT_FIELD}_nb_el" ; Number of elements
-STRUCT_FIELD_SIZE equs "{STRUCT_FIELD}_size" ; sizeof(type) * nb_el
+; Defines a field of N bytes.
+MACRO bytes ; nb_bytes, field_name
+    new_field \1, RB, \2
+ENDM
+
+; Defines a field of N*2 bytes.
+MACRO words ; nb_words, field_name
+    new_field \1, RW, \2
+ENDM
+
+; Defines a field of N*4 bytes.
+MACRO longs ; nb_longs, field_name
+    new_field \1, RL, \2
 ENDM
 
 
-; new_field nb_elems, rs_type, field_name
-; For internal use, please do not use externally
-new_field: MACRO
-    IF !DEF(STRUCT_NAME) || !DEF(NB_FIELDS)
-        FAIL "Please start defining a struct, using `struct`"
-    ENDC
+; Defines EQUS strings pertaining to a struct's Nth field.
+; Used internally by `new_field` and `dstruct`.
+MACRO get_nth_field_info ; struct_name, field_id
+    DEF STRUCT_FIELD      EQUS "\1_field{d:\2}"       ; prefix for other EQUS
+    DEF STRUCT_FIELD_NAME EQUS "{STRUCT_FIELD}_name"  ; field's name
+    DEF STRUCT_FIELD_TYPE EQUS "{STRUCT_FIELD}_type"  ; type ("B", "W", or "L")
+    DEF STRUCT_FIELD_NBEL EQUS "{STRUCT_FIELD}_nb_el" ; number of elements
+    DEF STRUCT_FIELD_SIZE EQUS "{STRUCT_FIELD}_size"  ; sizeof(type) * nb_el
+ENDM
 
-    get_nth_field_info NB_FIELDS
-    ; Set field name (keep in mind `STRUCT_FIELD_NAME` is *itself* an EQUS!)
-STRUCT_FIELD_NAME equs "\"\3\""
-    PURGE STRUCT_FIELD_NAME
-
-    ; Set field offset
-STRUCT_FIELD \2 (\1)
-    ; Alias this in a human-comprehensive manner
-STRUCT_FIELD_NAME equs "{STRUCT_NAME}_\3"
-STRUCT_FIELD_NAME = STRUCT_FIELD
-
-    ; Compute field size
-CURRENT_RS RB 0
-STRUCT_FIELD_SIZE = CURRENT_RS - STRUCT_FIELD
-
-    ; Set properties
-STRUCT_FIELD_NBEL = \1
-STRUCT_FIELD_TYPE equs STRSUB("\2", 2, 1)
-
+; Purges the variables defined by `get_nth_field_info`.
+; Used internally by `new_field` and `dstruct`.
+MACRO purge_nth_field_info
     PURGE STRUCT_FIELD
     PURGE STRUCT_FIELD_NAME
     PURGE STRUCT_FIELD_TYPE
     PURGE STRUCT_FIELD_NBEL
     PURGE STRUCT_FIELD_SIZE
-    PURGE CURRENT_RS
-
-NB_FIELDS = NB_FIELDS + 1
 ENDM
 
-; bytes nb_bytes, field_name
-; Defines a field of N bytes
-bytes: MACRO
-    new_field \1, RB, \2
-ENDM
-
-; words nb_words, field_name
-; Defines a field of N*2 bytes
-words: MACRO
-    new_field \1, RW, \2
-ENDM
-
-; longs nb_longs, field_name
-; Defines a field of N*4 bytes
-longs: MACRO
-    new_field \1, RL, \2
-ENDM
-
-
-; dstruct struct_type, INSTANCE_NAME[, ...]
-; Allocates space for a struct in memory
-; If no further arguments are supplied, the space is simply allocated (using `ds`)
-; Otherwise, the data is written to memory using the appropriate types
-; For example, a struct defined with `bytes 1, Field1` and `words 3, Field2` would have four extra arguments, one byte then three words.
-dstruct: MACRO
-NB_FIELDS equs "\1_nb_fields"
-    IF !DEF(NB_FIELDS)
-        FAIL "Struct \1 isn't defined!"
-    ELIF _NARG != 2 && _NARG != NB_FIELDS + 2 ; We must have either a RAM declaration (no data args) or a ROM one (RAM args + data args)
-EXPECTED_NARG = 2 + NB_FIELDS
-        FAIL "Invalid number of arguments, expected 2 or {d:EXPECTED_NARG} but got {d:_NARG}"
+; Defines a field with a given RS type (`RB`, `RW`, or `RL`).
+; Used internally by `bytes`, `words`, and `longs`.
+MACRO new_field ; nb_elems, rs_type, field_name
+    IF !DEF(STRUCT_NAME) || !DEF(NB_FIELDS)
+        FAIL "Please start defining a struct, using `struct`"
     ENDC
 
-    ; Define the two fields required by `get_nth_field_info`
-STRUCT_NAME   equs "\1" ; Which struct `get_nth_field_info` should pull info about
-INSTANCE_NAME equs "\2" ; The instance's base name
+    get_nth_field_info {STRUCT_NAME}, NB_FIELDS
+
+    ; Set field name
+    DEF {STRUCT_FIELD_NAME} EQUS "\3"
+    ; Set field offset
+    DEF {STRUCT_FIELD} \2 (\1)
+    ; Alias this in a human-comprehensible manner
+    DEF {STRUCT_NAME}_\3 EQU {STRUCT_FIELD}
+    ; Compute field size
+    DEF {STRUCT_FIELD_SIZE} EQU _RS - {STRUCT_FIELD}
+    ; Set properties
+    DEF {STRUCT_FIELD_NBEL} EQU \1
+    DEF {STRUCT_FIELD_TYPE} EQUS STRSUB("\2", 2, 1)
+
+    purge_nth_field_info
+
+    REDEF NB_FIELDS = NB_FIELDS + 1
+ENDM
 
 
-    ; RGBASM always expands `\X` macro args, so `IF _NARG > 2 && STRIN("\3", "=")` will error out when there are only 2 args
-    ; Therefore, the condition is checked here (we can't nest the `IF`s over there because that doesn't translate well to `ELSE`)
-IS_NAMED_INVOCATION = 0
-    IF _NARG > 2
-        IF STRIN("\3", "=")
-IS_NAMED_INVOCATION = 1
+; Strips whitespace from the left of a string.
+; Used internally by `dstruct`.
+MACRO lstrip ; string_variable
+    FOR START_POS, 1, STRLEN("{\1}") + 1
+        IF STRCMP(STRSUB("{\1}", START_POS, 1), " ") && \
+           STRCMP(STRSUB("{\1}", START_POS, 1), "\t")
+            BREAK
         ENDC
+    ENDR
+    REDEF \1 EQUS STRSUB("{\1}", START_POS)
+    PURGE START_POS
+ENDM
+
+; Allocates space for a struct in memory.
+; If no further arguments are supplied, the space is allocated using `ds`.
+; Otherwise, the data is written to memory using the appropriate types.
+; For example, a struct defined with `bytes 1, Field1` and `words 3, Field2`
+; could take four extra arguments, one byte then three words.
+; Each such argument would have an equal sign between the name and value.
+MACRO dstruct ; struct_type, instance_name[, ...]
+    IF !DEF(\1_nb_fields)
+        FAIL "Struct \1 isn't defined!"
+    ELIF _NARG != 2 && _NARG != 2 + \1_nb_fields
+        ; We must have either a RAM declaration (no data args)
+        ; or a ROM one (RAM args + data args)
+        DEF EXPECTED_NARG = 2 + \1_nb_fields
+        FAIL STRCAT("Invalid number of arguments, expected 2 or ", \
+                    "{d:EXPECTED_NARG} but got {d:_NARG}")
     ENDC
 
-    IF IS_NAMED_INVOCATION
-        ; This is a named instantiation, translate that to an ordered one
-        ; This is needed because data has to be laid out in order, so some translation is needed anyways
-        ; And finally, it's better to re-use the existing code at the cost of a single nested macro, I believe
-MACRO_CALL equs "dstruct \1, \2" ; This will be used later, but define it now because `SHIFT` will be run
-        ; In practice `SHIFT` has no effect outside of one when invoked inside of a REPT block, but I hope this behavior is changed (causes a problem elsewhere)
+    ; RGBASM always expands macro args, so `IF _NARG > 2 && STRIN("\3", "=")`
+    ; would error out when there are only two args.
+    ; Therefore, the condition is checked here (we can't nest the `IF`s over
+    ; there because that would require a duplicated `ELSE`).
+    DEF IS_NAMED_INSTANTIATION = 0
+    IF _NARG > 2
+        REDEF IS_NAMED_INSTANTIATION = STRIN("\3", "=")
+    ENDC
 
-ARG_NUM = 3
-        REPT NB_FIELDS
-            ; Find out which argument the current one is
-CUR_ARG equs "\3"
-            ; Remove all whitespace to obtain something like ".name=value" (whitespace are unnecessary and complexify parsing)
+    IF IS_NAMED_INSTANTIATION
+        ; This is a named instantiation; translate that to an ordered one.
+        ; This is needed because data has to be laid out in order, so some
+        ; translation is needed anyway.
+        ; And finally, I believe it's better to re-use the existing code at
+        ; the cost of a single nested macro.
+
+        FOR ARG_NUM, 3, _NARG + 1
+            ; Remove leading whitespace to obtain something like ".name=value"
+            ; (this enables a simple check for starting with a period)
+            REDEF CUR_ARG EQUS "\<ARG_NUM>"
             lstrip CUR_ARG
 
-EQUAL_POS = STRIN("{CUR_ARG}", "=")
-            IF EQUAL_POS == 0
-                FAIL "Argument #{ARG_NUM} (\3) does not contain an equal sign in this named instantiation"
+            ; Ensure that the argument has a name and a value,
+            ; separated by an equal sign
+            DEF EQUAL_POS = STRIN("{CUR_ARG}", "=")
+            IF !EQUAL_POS
+                FAIL STRCAT("Argument #{d:ARG_NUM} (\<ARG_NUM>) does not ", \
+                            "contain an equal sign in this named instantiation")
             ELIF STRCMP(STRSUB("{CUR_ARG}", 1, 1), ".")
-                FAIL "Argument #{ARG_NUM} (\3) does not start with a period"
+                FAIL STRCAT("Argument #{d:ARG_NUM} (\<ARG_NUM>) does not ", \
+                            "start with a period")
             ENDC
 
-FIELD_ID = -1
-CUR_FIELD_ID = 0
-            REPT NB_FIELDS
-
-                ; Get the name of the Nth field and compare
-TMP equs "{STRUCT_NAME}_field{d:CUR_FIELD_ID}_name"
-CUR_FIELD_NAME equs TMP
-                PURGE TMP
-
-                IF !STRCMP(STRUPR("{CUR_FIELD_NAME}"), STRUPR(STRSUB("{CUR_ARG}", 2, EQUAL_POS - 2)))
-                    ; Match found!
-                    IF FIELD_ID == -1
-FIELD_ID = CUR_FIELD_ID
-                    ELSE
-TMP equs "{STRUCT_NAME}_field{d:CUR_FIELD_ID}_name"
-CONFLICTING_FIELD_NAME equs TMP
-                        PURGE TMP
-                        FAIL "Fields {CUR_FIELD_NAME} and {CONFLICTING_FIELD_NAME} have conflicting names (case-insensitive), cannot perform named instantiation"
-                    ENDC
+            ; Find out which field the current argument is
+            FOR FIELD_ID, \1_nb_fields
+                IF !STRCMP(STRLWR(STRSUB("{CUR_ARG}", 2, EQUAL_POS - 2)), \
+                           STRLWR("{\1_field{d:FIELD_ID}_name}"))
+                    BREAK ; Match found!
                 ENDC
-
-                PURGE CUR_FIELD_NAME
-CUR_FIELD_ID = CUR_FIELD_ID + 1
             ENDR
-            PURGE CUR_FIELD_ID
 
-            IF FIELD_ID == -1
-                FAIL "Argument #{d:ARG_NUM} (\3) does not match any field of the struct"
+            IF FIELD_ID == \1_nb_fields
+                FAIL STRCAT("Argument #{d:ARG_NUM} (\<ARG_NUM>) ", \
+                            "does not match any field of the struct")
+            ELIF DEF(FIELD_{d:FIELD_ID}_INITIALIZER)
+                FAIL STRCAT("Argument #{d:ARG_NUM} (\<ARG_NUM>) ", \
+                            "conflicts with #{d:FIELD_{d:FIELD_ID}_ARG_NUM} ", \
+                            "({FIELD_{d:FIELD_ID}_ARG})")
             ENDC
 
-INITIALIZER_NAME equs "FIELD_{d:FIELD_ID}_INITIALIZER"
-INITIALIZER_NAME equs STRSUB("{CUR_ARG}", EQUAL_POS + 1, STRLEN("{CUR_ARG}") - EQUAL_POS)
-            PURGE INITIALIZER_NAME
+            ; Save the argument number and value to report in case a
+            ; later argument conflicts with it
+            DEF FIELD_{d:FIELD_ID}_ARG_NUM EQU ARG_NUM
+            DEF FIELD_{d:FIELD_ID}_ARG EQUS "{CUR_ARG}"
 
-            ; Go to next arg
-ARG_NUM = ARG_NUM + 1
-            SHIFT
-            PURGE CUR_ARG
-
+            ; Escape any commas in a multi-byte argument initializer so it can
+            ; be passed as one argument to the nested ordered instantiation
+            DEF FIELD_{d:FIELD_ID}_INITIALIZER EQUS \
+                STRRPL(STRSUB("{CUR_ARG}", EQUAL_POS + 1), ",", "\\,")
         ENDR
+        PURGE ARG_NUM, CUR_ARG
 
-        ; Now that we matched each named initializer to their order, invoke the macro again but without names
-FIELD_ID = 0
-        REPT NB_FIELDS
-TMP equs "{MACRO_CALL}"
-            PURGE MACRO_CALL
-INITIALIZER_VALUE equs "{FIELD_{d:FIELD_ID}_INITIALIZER}"
-DELETE_INITIALIZER equs "PURGE FIELD_{d:FIELD_ID}_INITIALIZER"
-            DELETE_INITIALIZER
-            PURGE DELETE_INITIALIZER
-MACRO_CALL equs "{TMP}, {INITIALIZER_VALUE}"
-            PURGE TMP
-            PURGE INITIALIZER_VALUE
-FIELD_ID = FIELD_ID + 1
+        ; Now that we matched each named initializer to their order,
+        ; invoke the macro again but without names
+        DEF ORDERED_ARGS EQUS "\1, \2"
+        FOR FIELD_ID, \1_nb_fields
+            REDEF ORDERED_ARGS EQUS STRCAT("{ORDERED_ARGS}, ", \
+                                           "{FIELD_{d:FIELD_ID}_INITIALIZER}")
+            PURGE FIELD_{d:FIELD_ID}_ARG_NUM
+            PURGE FIELD_{d:FIELD_ID}_ARG
+            PURGE FIELD_{d:FIELD_ID}_INITIALIZER
         ENDR
-
         PURGE FIELD_ID
-        ; Clean up vars for nested invocation, otherwise some `equs` will be expanded
-        PURGE INSTANCE_NAME
-        PURGE STRUCT_NAME
-        PURGE IS_NAMED_INVOCATION
-        PURGE NB_FIELDS
 
-        MACRO_CALL ; Now do call the macro
-        PURGE MACRO_CALL
-
+        ; Do the nested ordered instantiation
+        dstruct {ORDERED_ARGS} ; purges IS_NAMED_INSTANTIATION
+        PURGE ORDERED_ARGS
 
     ELSE
+        ; This is an ordered instantiation, not a named one.
 
+        ; Define the struct's root label
+        \2::
 
-INSTANCE_NAME:: ; Declare the struct's root
         ; Define instance's properties from struct's
-\2_nb_fields = NB_FIELDS
-sizeof_\2 = sizeof_\1
+        DEF \2_nb_fields EQU \1_nb_fields
+        DEF sizeof_\2    EQU sizeof_\1
 
-        ; Start defining fields
-FIELD_ID = 0
-        REPT NB_FIELDS
+        ; Define each field
+        DEF ARG_NUM = 3
+        FOR FIELD_ID, \1_nb_fields
+            get_nth_field_info \1, FIELD_ID
 
-            get_nth_field_info FIELD_ID
+            ; Define the label for the field
+            \2_{{STRUCT_FIELD_NAME}}::
 
-FIELD_NAME equs STRCAT("{INSTANCE_NAME}_", STRUCT_FIELD_NAME)
-FIELD_NAME::
-
-            ; We have defined a label, but now we also need the data backing it
-            ; There are basically two options:
-            IF _NARG == 2 ; RAM definition, no data
-                ds STRUCT_FIELD_SIZE
+            ; Declare the space for the field
+            IF ARG_NUM > _NARG
+                ; RAM declaration; use `DS`
+                DS {STRUCT_FIELD_SIZE}
             ELSE
-
-DATA_TYPE equs STRCAT("D", "{{STRUCT_FIELD_TYPE}}")
-
-                REPT STRUCT_FIELD_NBEL
-                    DATA_TYPE \3
-                    SHIFT
-                ENDR
-                PURGE DATA_TYPE
+                ; ROM declaration; use `DB`, `DW`, or `DL`
+                IF !STRCMP("{{STRUCT_FIELD_TYPE}}", "B")
+                    ; Multi-byte fields may be initialized with
+                    ; a sequence of comma-separated bytes
+                    DS {STRUCT_FIELD_SIZE}, \<ARG_NUM>
+                ELSE
+                    REPT STRUCT_FIELD_NBEL
+                        D{{STRUCT_FIELD_TYPE}} \<ARG_NUM>
+                    ENDR
+                ENDC
+                REDEF ARG_NUM = ARG_NUM + 1
             ENDC
 
-            ; Clean up vars for next iteration
-            PURGE STRUCT_FIELD
-            PURGE STRUCT_FIELD_NAME
-            PURGE STRUCT_FIELD_TYPE
-            PURGE STRUCT_FIELD_NBEL
-            PURGE STRUCT_FIELD_SIZE
-            PURGE FIELD_NAME
-
-FIELD_ID = FIELD_ID + 1
+            purge_nth_field_info
         ENDR
+        PURGE FIELD_ID, ARG_NUM
 
-
-        ; Clean up
-        PURGE FIELD_ID
-        ; Make sure to keep what's here in sync with cleanup at the end of a named invocation
-        PURGE INSTANCE_NAME
-        PURGE STRUCT_NAME
-        PURGE IS_NAMED_INVOCATION
-        PURGE NB_FIELDS
+        PURGE IS_NAMED_INSTANTIATION
     ENDC
 ENDM
 
 
-; dstructs nb_structs, struct_type, INSTANCE_NAME
-; Allocates space for an array of structs in memory
-; Each struct will have the index appended to its name **as hex**
-; (for example: `dstructs 32, NPC, wNPC` will define wNPC0, wNPC1, and so on until wNPC1F)
-; This is a limitation because RGBASM does not provide an easy way to get the decimal representation of a number
-; Does not support data declarations because I think each struct should be defined individually for that purpose
-dstructs: MACRO
-STRUCT_ID = 0
-    REPT \1
-        dstruct \2, \3{X:STRUCT_ID}
-STRUCT_ID = STRUCT_ID + 1
+; Allocates space for an array of structs in memory.
+; Each struct will have the index appended to its name **as decimal**.
+; For example: `dstructs 32, NPC, wNPC` will define
+; wNPC0, wNPC1, and so on until wNPC31.
+; This is a change from the previous version of RGBDS-structs,
+; where the index was uppercase hexadecimal.
+; Does not support data declarations because I think each struct should be
+; defined individually for that purpose.
+MACRO dstructs ; nb_structs, struct_type, instance_name
+    FOR STRUCT_ID, \1
+        dstruct \2, \3{d:STRUCT_ID}
     ENDR
-
     PURGE STRUCT_ID
 ENDM
