@@ -1,5 +1,8 @@
-
 INCLUDE "../structs.asm"
+
+    ; Check for the expected RGBDS-structs version
+    rgbds_structs_version 2.0.0
+
 
     ; Struct declarations (ideally in a separate file, but grouped here for simplicity)
     ; Note that everything is happening outside of a `SECTION`
@@ -45,6 +48,8 @@ INCLUDE "../structs.asm"
 
 SECTION "Code", ROM0
 
+Routine::
+
     ; Using struct offsets
     ld de, wPlayer
     ld hl, NPC_InteractID
@@ -76,16 +81,20 @@ SECTION "Code", ROM0
 
     ld hl, wOBJPalette0
     ld de, DefaultPalette
-    ld c, sizeof_wOBJPalette ; Using the variable's size
+    ld c, sizeof_wOBJPalette0 ; Using the variable's size
     call memcpy_small
 
     ; ...
 
-DefaultPalette:
-    db $00, $00, $00
-    db $0A, $0A, $0A
-    db $15, $15, $15
-    db $1F, $1F, $1F
+    ; Ordered instantiation of a struct passes each field in order
+    ; Multi-byte fields repeat the byte to fill their size
+    dstruct RawPalette, DefaultPalette, $00, $0A, $15, $1F
+
+    ; Named instantiation can be out of order
+    dstruct RawPalette, CustomPalette, \
+        .Color1=$1E\,$0A\,$06, \ ; Multi-byte fields can take a
+        .Color2=$1F\,$13\,$16, \ ; sequence of bytes to repeat
+        .Color3=$1F, .Color0=$00
 
 
 memcpy_small:
