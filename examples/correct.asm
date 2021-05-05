@@ -14,7 +14,7 @@ INCLUDE "../structs.asm"
     end_struct
 
     ; Defines an NPC, as I used in Aevilia (https://github.com/ISSOtm/Aevilia-GB/blob/master/macros/memory.asm#L10-L25)
-    struct Sprite
+    struct NPC
         words 1, YPos
         words 1, XPos
         bytes 1, YBox
