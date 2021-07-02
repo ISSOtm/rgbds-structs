@@ -143,8 +143,7 @@ ENDM
 ; Used internally by `dstruct`.
 MACRO lstrip ; string_variable
     FOR START_POS, 1, STRLEN("{\1}") + 1
-        IF STRCMP(STRSUB("{\1}", START_POS, 1), " ") && \
-           STRCMP(STRSUB("{\1}", START_POS, 1), "\t")
+        IF !STRIN(" \t", STRSUB("{\1}", START_POS, 1))
             BREAK
         ENDC
     ENDR
@@ -195,10 +194,10 @@ MACRO dstruct ; struct_type, instance_name[, ...]
             ; separated by an equal sign
             DEF EQUAL_POS = STRIN("{CUR_ARG}", "=")
             IF !EQUAL_POS
-                FAIL STRCAT("Argument #{d:ARG_NUM} (\<ARG_NUM>) does not ", \
+                FAIL STRCAT("Argument #{d:ARG_NUM} ({CUR_ARG}) does not ", \
                             "contain an equal sign in this named instantiation")
             ELIF STRCMP(STRSUB("{CUR_ARG}", 1, 1), ".")
-                FAIL STRCAT("Argument #{d:ARG_NUM} (\<ARG_NUM>) does not ", \
+                FAIL STRCAT("Argument #{d:ARG_NUM} ({CUR_ARG}) does not ", \
                             "start with a period")
             ENDC
 
@@ -211,10 +210,10 @@ MACRO dstruct ; struct_type, instance_name[, ...]
             ENDR
 
             IF FIELD_ID == \1_nb_fields
-                FAIL STRCAT("Argument #{d:ARG_NUM} (\<ARG_NUM>) ", \
+                FAIL STRCAT("Argument #{d:ARG_NUM} ({CUR_ARG}) ", \
                             "does not match any field of the struct")
             ELIF DEF(FIELD_{d:FIELD_ID}_INITIALIZER)
-                FAIL STRCAT("Argument #{d:ARG_NUM} (\<ARG_NUM>) ", \
+                FAIL STRCAT("Argument #{d:ARG_NUM} ({CUR_ARG}) ", \
                             "conflicts with #{d:FIELD_{d:FIELD_ID}_ARG_NUM} ", \
                             "({FIELD_{d:FIELD_ID}_ARG})")
             ENDC
