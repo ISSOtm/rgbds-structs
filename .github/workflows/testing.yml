@@ -1,0 +1,28 @@
+name: Regression testing
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '37 13 20 * *'
+
+jobs:
+  testing:
+    strategy:
+      matrix:
+        rgbds: ['', '--HEAD']
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install RGBDS
+        run: |
+          brew install ${{ matrix.rgbds }} rgbds
+      - name: Check that examples assemble correctly
+        run: |
+          cd examples
+          for f in *.asm; do
+            if [[ $f = pitfalls.asm ]]; then continue; fi
+            echo "Assembling: $f"
+            rgbasm "$f" -o "${f%.asm}.o"
+            echo "Linking: $f"
+            rgblink "${f%.asm}.o"
+          done
