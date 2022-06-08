@@ -40,9 +40,7 @@ MACRO rgbds_structs_version ; version_string
     check_ver {EXPECTED_VERSION}, {CURRENT_VERSION}
 
     IF !DEF(EXPECTED_VERSION)
-        FAIL STRCAT("rgbds-structs version \1 is required, ", \
-                    "which is incompatible with current version ", \
-                    STRRPL("{CURRENT_VERSION}", ",", "."))
+        FAIL "rgbds-structs version \1 is required, which is incompatible with current version {STRUCTS_VERSION}"
     ENDC
 
     PURGE CURRENT_VERSION, EXPECTED_VERSION
@@ -151,9 +149,7 @@ MACRO dstruct ; struct_type, instance_name[, ...]
     ELIF _NARG != 2 && _NARG != 2 + \1_nb_fields
         ; We must have either a RAM declaration (no data args)
         ; or a ROM one (RAM args + data args)
-        DEF EXPECTED_NARG = 2 + \1_nb_fields
-        FAIL STRCAT("Invalid number of arguments, expected 2 or ", \
-                    "{d:EXPECTED_NARG} but got {d:_NARG}")
+        FAIL STRFMT("Expected 2 or %u args to `dstruct`, but got {d:_NARG}", 2 + \1_nb_fields)
     ENDC
 
     ; RGBASM always expands macro args, so `IF _NARG > 2 && STRIN("\3", "=")`
@@ -167,10 +163,8 @@ MACRO dstruct ; struct_type, instance_name[, ...]
 
     IF IS_NAMED_INSTANTIATION
         ; This is a named instantiation; translate that to an ordered one.
-        ; This is needed because data has to be laid out in order, so some
-        ; translation is needed anyway.
-        ; And finally, I believe it's better to re-use the existing code at
-        ; the cost of a single nested macro.
+        ; This is needed because data has to be laid out in order, so some translation is needed anyway.
+        ; And finally, I believe it's better to re-use the existing code at the cost of a single nested macro.
 
         FOR ARG_NUM, 3, _NARG + 1
             ; Remove leading whitespace to obtain something like ".name=value"
@@ -182,11 +176,9 @@ MACRO dstruct ; struct_type, instance_name[, ...]
             ; separated by an equal sign
             DEF EQUAL_POS = STRIN("{CUR_ARG}", "=")
             IF !EQUAL_POS
-                FAIL STRCAT("Argument #{d:ARG_NUM} ({CUR_ARG}) does not ", \
-                            "contain an equal sign in this named instantiation")
+                FAIL "\"{CUR_ARG}\" is not a named initializer!"
             ELIF STRCMP(STRSUB("{CUR_ARG}", 1, 1), ".")
-                FAIL STRCAT("Argument #{d:ARG_NUM} ({CUR_ARG}) does not ", \
-                            "start with a period")
+                FAIL "\"{CUR_ARG}\" does not start with a period!"
             ENDC
 
             ; Find out which field the current argument is
@@ -197,23 +189,17 @@ MACRO dstruct ; struct_type, instance_name[, ...]
             ENDR
 
             IF FIELD_ID == \1_nb_fields
-                FAIL STRCAT("Argument #{d:ARG_NUM} ({CUR_ARG}) ", \
-                            "does not match any field of the struct")
+                FAIL "\"{CUR_ARG}\" does not match any member of \1"
             ELIF DEF(FIELD_{d:FIELD_ID}_INITIALIZER)
-                FAIL STRCAT("Argument #{d:ARG_NUM} ({CUR_ARG}) ", \
-                            "conflicts with #{d:FIELD_{d:FIELD_ID}_ARG_NUM} ", \
-                            "({FIELD_{d:FIELD_ID}_ARG})")
+                FAIL "\"{CUR_ARG}\" conflicts with \"{FIELD_{d:FIELD_ID}_ARG}\""
             ENDC
 
-            ; Save the argument number and value to report in case a
-            ; later argument conflicts with it
-            DEF FIELD_{d:FIELD_ID}_ARG_NUM EQU ARG_NUM
+            ; Save the argument to report in case a later argument conflicts with it
             DEF FIELD_{d:FIELD_ID}_ARG EQUS "{CUR_ARG}"
 
             ; Escape any commas in a multi-byte argument initializer so it can
             ; be passed as one argument to the nested ordered instantiation
-            DEF FIELD_{d:FIELD_ID}_INITIALIZER EQUS \
-                STRRPL(STRSUB("{CUR_ARG}", EQUAL_POS + 1), ",", "\\,")
+            DEF FIELD_{d:FIELD_ID}_INITIALIZER EQUS STRRPL(STRSUB("{CUR_ARG}", EQUAL_POS + 1), ",", "\\,")
         ENDR
         PURGE ARG_NUM, CUR_ARG
 
@@ -221,11 +207,8 @@ MACRO dstruct ; struct_type, instance_name[, ...]
         ; invoke the macro again but without names
         DEF ORDERED_ARGS EQUS "\1, \2"
         FOR FIELD_ID, \1_nb_fields
-            REDEF ORDERED_ARGS EQUS STRCAT("{ORDERED_ARGS}, ", \
-                                           "{FIELD_{d:FIELD_ID}_INITIALIZER}")
-            PURGE FIELD_{d:FIELD_ID}_ARG_NUM
-            PURGE FIELD_{d:FIELD_ID}_ARG
-            PURGE FIELD_{d:FIELD_ID}_INITIALIZER
+            REDEF ORDERED_ARGS EQUS "{ORDERED_ARGS}, {FIELD_{d:FIELD_ID}_INITIALIZER}"
+            PURGE FIELD_{d:FIELD_ID}_ARG, FIELD_{d:FIELD_ID}_INITIALIZER
         ENDR
         PURGE FIELD_ID
 
@@ -280,7 +263,9 @@ ENDM
 ; This is a change from the previous version of rgbds-structs, where the index was uppercase hexadecimal.
 ; Does not support data declarations because I think each struct should be defined individually for that purpose.
 MACRO dstructs ; nb_structs, struct_type, instance_name
-    static_assert _NARG == 3, "`dstructs` only takes 3 arguments!"
+    IF _NARG == 3
+        FAIL "`dstructs` only takes 3 arguments!"
+    ENDC
 
     FOR STRUCT_ID, \1
         dstruct \2, \3{d:STRUCT_ID}
