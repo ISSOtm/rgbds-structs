@@ -83,19 +83,9 @@ ENDM
 
 
 ; Defines a field of N bytes.
-MACRO bytes ; nb_bytes, field_name
-    new_field \1, RB, \2
-ENDM
-
-; Defines a field of N*2 bytes.
-MACRO words ; nb_words, field_name
-    new_field \1, RW, \2
-ENDM
-
-; Defines a field of N*4 bytes.
-MACRO longs ; nb_longs, field_name
-    new_field \1, RL, \2
-ENDM
+DEF bytes equs "new_field rb,"
+DEF words equs "new_field rw,"
+DEF longs equs "new_field rl,"
 
 
 ; Defines EQUS strings pertaining to a struct's Nth field.
@@ -118,7 +108,7 @@ MACRO purge_nth_field_info
     PURGE STRUCT_FIELD_SIZE
 ENDM
 
-; Defines a field with a given RS type (`RB`, `RW`, or `RL`).
+; Defines a field with a given RS type (`rb`, `rw`, or `rl`).
 ; Used internally by `bytes`, `words`, and `longs`.
 MACRO new_field ; nb_elems, rs_type, field_name
     IF !DEF(STRUCT_NAME) || !DEF(NB_FIELDS)
@@ -130,14 +120,14 @@ MACRO new_field ; nb_elems, rs_type, field_name
     ; Set field name
     DEF {STRUCT_FIELD_NAME} EQUS "\3"
     ; Set field offset
-    DEF {STRUCT_FIELD} \2 (\1)
+    DEF {STRUCT_FIELD} \1 (\2)
     ; Alias this in a human-comprehensible manner
     DEF {STRUCT_NAME}_\3 EQU {STRUCT_FIELD}
     ; Compute field size
     DEF {STRUCT_FIELD_SIZE} EQU _RS - {STRUCT_FIELD}
     ; Set properties
-    DEF {STRUCT_FIELD_NBEL} EQU \1
-    DEF {STRUCT_FIELD_TYPE} EQUS STRSUB("\2", 2, 1)
+    DEF {STRUCT_FIELD_NBEL} EQU \2
+    DEF {STRUCT_FIELD_TYPE} EQUS STRSUB("\1", 2, 1)
 
     purge_nth_field_info
 
