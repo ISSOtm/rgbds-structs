@@ -88,7 +88,7 @@ DEF words equs "new_field rw,"
 DEF longs equs "new_field rl,"
 
 ; Extends a new struct by an existing struct, effectively cloning its fields.
-MACRO extends ; struct_type, [sub_struct_name]
+MACRO extends ; struct_type[, sub_struct_name]
     IF !DEF(\1_nb_fields)
         FAIL "Struct \1 isn't defined!"
     ENDC
@@ -113,7 +113,6 @@ MACRO extends ; struct_type, [sub_struct_name]
 
         REDEF NB_FIELDS = NB_FIELDS + 1
         PURGE EXTENDS_FIELD
-
     ENDR
 ENDM
 
