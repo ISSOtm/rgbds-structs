@@ -92,7 +92,7 @@ MACRO extends ; struct_type, [sub_struct_name]
     IF !DEF(\1_nb_fields)
         FAIL "Struct \1 isn't defined!"
     ENDC
-    IF _NARG < 1 || _NARG > 2
+    IF _NARG != 1 && _NARG != 2
         FAIL "Invalid number of arguments, expected 1 or 2"
     ENDC
     FOR FIELD_ID, \1_nb_fields
