@@ -304,6 +304,8 @@ ENDM
 ; Does not support data declarations because I think each struct should be
 ; defined individually for that purpose.
 MACRO dstructs ; nb_structs, struct_type, instance_name
+    static_assert _NARG == 3, "`dstructs` only takes 3 arguments!"
+
     FOR STRUCT_ID, \1
         dstruct \2, \3{d:STRUCT_ID}
     ENDR
