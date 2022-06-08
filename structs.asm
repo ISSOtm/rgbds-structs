@@ -24,7 +24,9 @@
 
 
 DEF STRUCTS_VERSION equs "2.0.0"
-DEF STRUCTS_URL equs "https://github.com/ISSOtm/rgbds-structs"
+MACRO structs_assert
+    assert (\1), "rgbds-structs {STRUCTS_VERSION} bug on line {d:__LINE__}. Please report at https://github.com/ISSOtm/rgbds-structs, and share your code there!"
+ENDM
 
 
 ; Call with the expected RGBDS-structs version string to ensure your code
@@ -256,10 +258,6 @@ MACRO dstruct ; struct_type, instance_name[, ...]
         ; Define the struct's root label
         \2::
 
-        ; Define instance's properties from struct's
-        DEF \2_nb_fields EQU \1_nb_fields
-        DEF sizeof_\2    EQU sizeof_\1
-
         ; Define each field
         DEF ARG_NUM = 3
         FOR FIELD_ID, \1_nb_fields
@@ -289,6 +287,11 @@ MACRO dstruct ; struct_type, instance_name[, ...]
             purge_nth_field_info
         ENDR
         PURGE FIELD_ID, ARG_NUM
+
+        ; Define instance's properties from struct's
+        DEF \2_nb_fields EQU \1_nb_fields
+        DEF sizeof_\2    EQU @ - (\2)
+        structs_assert sizeof_\1 == sizeof_\2
 
         PURGE IS_NAMED_INSTANTIATION
     ENDC
