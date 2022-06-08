@@ -99,12 +99,7 @@ ENDM
 
 ; Purges the variables defined by `get_nth_field_info`.
 ; Used internally by `new_field` and `dstruct`.
-MACRO purge_nth_field_info
-    PURGE STRUCT_FIELD
-    PURGE STRUCT_FIELD_NAME
-    PURGE STRUCT_FIELD_TYPE
-    PURGE STRUCT_FIELD_SIZE
-ENDM
+DEF purge_nth_field_info equs "PURGE STRUCT_FIELD, STRUCT_FIELD_NAME, STRUCT_FIELD_TYPE, STRUCT_FIELD_SIZE"
 
 ; Defines a field with a given RS type (`rb`, `rw`, or `rl`).
 ; Used internally by `bytes`, `words`, and `longs`.
