@@ -23,11 +23,15 @@
 
 
 
+DEF STRUCTS_VERSION equs "2.0.0"
+DEF STRUCTS_URL equs "https://github.com/ISSOtm/rgbds-structs"
+
+
 ; Call with the expected RGBDS-structs version string to ensure your code
 ; is compatible with the INCLUDEd version of RGBDS-structs.
 ; Example: `rgbds_structs_version 2.0.0`
 MACRO rgbds_structs_version ; version_string
-    DEF CURRENT_VERSION EQUS "2,0,0"
+    DEF CURRENT_VERSION EQUS STRRPL("{STRUCTS_VERSION}", ".", ",")
 
     ; Undefine `EXPECTED_VERSION` if it does not match `CURRENT_VERSION`
     DEF EXPECTED_VERSION EQUS STRRPL("\1", ".", ",")
@@ -45,7 +49,7 @@ ENDM
 ; Checks whether trios of version components match.
 ; Used internally by `rgbds_structs_version`.
 MACRO check_ver ; expected major, minor, patch, current major, minor, patch
-    IF \1 != \4 || \2 > \5 || \3 > \6
+    IF (\1) != (\4) || (\2) > (\5) || (\3) > (\6)
         PURGE EXPECTED_VERSION
     ENDC
 ENDM
