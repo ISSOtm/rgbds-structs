@@ -88,27 +88,29 @@ DEF words equs "new_field rw,"
 DEF longs equs "new_field rl,"
 
 ; Extends a new struct by an existing struct, effectively cloning its fields.
-MACRO extends ; struct_type
+MACRO extends ; struct_type, [sub_struct_name]
     IF !DEF(\1_nb_fields)
         FAIL "Struct \1 isn't defined!"
     ENDC
     FOR FIELD_ID, \1_nb_fields
-        ; Grab relevant information on each field and define a new element with
-        ; them.
-        get_nth_field_info \1, FIELD_ID
-        DEF EXTENDS_NBEL EQU STRUCT_FIELD_NBEL
-        DEF EXTENDS_TYPE EQUS STRCAT("R", "{{STRUCT_FIELD_TYPE}}")
-        DEF EXTENDS_NAME EQUS "{{STRUCT_FIELD_NAME}}"
-        purge_nth_field_info
-        ; Create a new field using the gathered info.
-        IF _NARG == 2
-            new_field EXTENDS_NBEL, {EXTENDS_TYPE}, \2_{EXTENDS_NAME}
+        DEF EXTENDS_FIELD EQUS "\1_field{d:FIELD_ID}"
+        get_nth_field_info {STRUCT_NAME}, NB_FIELDS
+
+        IF _NARG == 1
+            DEF {STRUCT_FIELD_NAME} EQUS "{{EXTENDS_FIELD}_name}"
         ELSE
-            new_field EXTENDS_NBEL, {EXTENDS_TYPE}, {EXTENDS_NAME}
+            DEF {STRUCT_FIELD_NAME} EQUS "\2_{{EXTENDS_FIELD}_name}"
         ENDC
-        PURGE EXTENDS_NBEL
-        PURGE EXTENDS_TYPE
-        PURGE EXTENDS_NAME
+        DEF {STRUCT_FIELD} RB {EXTENDS_FIELD}_size
+        DEF {STRUCT_NAME}_{STRUCT_FIELD_NAME} EQU {STRUCT_FIELD}
+        DEF {STRUCT_FIELD_SIZE} EQU {EXTENDS_FIELD}_size
+        DEF {STRUCT_FIELD_TYPE} EQUS "{{EXTENDS_FIELD}_type}"
+
+        purge_nth_field_info
+
+        REDEF NB_FIELDS = NB_FIELDS + 1
+        PURGE EXTENDS_FIELD
+
     ENDR
 ENDM
 
@@ -128,7 +130,7 @@ DEF purge_nth_field_info equs "PURGE STRUCT_FIELD, STRUCT_FIELD_NAME, STRUCT_FIE
 
 ; Defines a field with a given RS type (`rb`, `rw`, or `rl`).
 ; Used internally by `bytes`, `words`, and `longs`.
-MACRO new_field ; nb_elems, rs_type, field_name
+MACRO new_field ; rs_type, nb_elems, field_name
     IF !DEF(STRUCT_NAME) || !DEF(NB_FIELDS)
         FAIL "Please start defining a struct, using `struct`"
     ENDC
