@@ -23,18 +23,24 @@
 
 
 
+DEF STRUCTS_VERSION equs "2.0.0"
+MACRO structs_assert
+    assert (\1), "rgbds-structs {STRUCTS_VERSION} bug on line {d:__LINE__}. Please report at https://github.com/ISSOtm/rgbds-structs, and share your code there!"
+ENDM
+
+
 ; Call with the expected RGBDS-structs version string to ensure your code
 ; is compatible with the INCLUDEd version of RGBDS-structs.
 ; Example: `rgbds_structs_version 2.0.0`
 MACRO rgbds_structs_version ; version_string
-    DEF CURRENT_VERSION EQUS "2,0,0"
+    DEF CURRENT_VERSION EQUS STRRPL("{STRUCTS_VERSION}", ".", ",")
 
     ; Undefine `EXPECTED_VERSION` if it does not match `CURRENT_VERSION`
     DEF EXPECTED_VERSION EQUS STRRPL("\1", ".", ",")
     check_ver {EXPECTED_VERSION}, {CURRENT_VERSION}
 
     IF !DEF(EXPECTED_VERSION)
-        FAIL STRCAT("RGBDS-structs version \1 is required, ", \
+        FAIL STRCAT("rgbds-structs version \1 is required, ", \
                     "which is incompatible with current version ", \
                     STRRPL("{CURRENT_VERSION}", ",", "."))
     ENDC
@@ -45,7 +51,7 @@ ENDM
 ; Checks whether trios of version components match.
 ; Used internally by `rgbds_structs_version`.
 MACRO check_ver ; expected major, minor, patch, current major, minor, patch
-    IF \1 != \4 || \2 > \5 || \3 > \6
+    IF (\1) != (\4) || (\2) > (\5) || (\3) > (\6)
         PURGE EXPECTED_VERSION
     ENDC
 ENDM
@@ -77,19 +83,9 @@ ENDM
 
 
 ; Defines a field of N bytes.
-MACRO bytes ; nb_bytes, field_name
-    new_field \1, RB, \2
-ENDM
-
-; Defines a field of N*2 bytes.
-MACRO words ; nb_words, field_name
-    new_field \1, RW, \2
-ENDM
-
-; Defines a field of N*4 bytes.
-MACRO longs ; nb_longs, field_name
-    new_field \1, RL, \2
-ENDM
+DEF bytes equs "new_field rb,"
+DEF words equs "new_field rw,"
+DEF longs equs "new_field rl,"
 
 ; Extends a new struct by an existing struct, effectively cloning its fields.
 MACRO extends ; struct_type
@@ -122,22 +118,15 @@ ENDM
 MACRO get_nth_field_info ; struct_name, field_id
     DEF STRUCT_FIELD      EQUS "\1_field{d:\2}"       ; prefix for other EQUS
     DEF STRUCT_FIELD_NAME EQUS "{STRUCT_FIELD}_name"  ; field's name
-    DEF STRUCT_FIELD_TYPE EQUS "{STRUCT_FIELD}_type"  ; type ("B", "W", or "L")
-    DEF STRUCT_FIELD_NBEL EQUS "{STRUCT_FIELD}_nb_el" ; number of elements
+    DEF STRUCT_FIELD_TYPE EQUS "{STRUCT_FIELD}_type"  ; type ("b", "l", or "l")
     DEF STRUCT_FIELD_SIZE EQUS "{STRUCT_FIELD}_size"  ; sizeof(type) * nb_el
 ENDM
 
 ; Purges the variables defined by `get_nth_field_info`.
 ; Used internally by `new_field` and `dstruct`.
-MACRO purge_nth_field_info
-    PURGE STRUCT_FIELD
-    PURGE STRUCT_FIELD_NAME
-    PURGE STRUCT_FIELD_TYPE
-    PURGE STRUCT_FIELD_NBEL
-    PURGE STRUCT_FIELD_SIZE
-ENDM
+DEF purge_nth_field_info equs "PURGE STRUCT_FIELD, STRUCT_FIELD_NAME, STRUCT_FIELD_TYPE, STRUCT_FIELD_SIZE"
 
-; Defines a field with a given RS type (`RB`, `RW`, or `RL`).
+; Defines a field with a given RS type (`rb`, `rw`, or `rl`).
 ; Used internally by `bytes`, `words`, and `longs`.
 MACRO new_field ; nb_elems, rs_type, field_name
     IF !DEF(STRUCT_NAME) || !DEF(NB_FIELDS)
@@ -149,14 +138,13 @@ MACRO new_field ; nb_elems, rs_type, field_name
     ; Set field name
     DEF {STRUCT_FIELD_NAME} EQUS "\3"
     ; Set field offset
-    DEF {STRUCT_FIELD} \2 (\1)
+    DEF {STRUCT_FIELD} \1 (\2)
     ; Alias this in a human-comprehensible manner
     DEF {STRUCT_NAME}_\3 EQU {STRUCT_FIELD}
     ; Compute field size
     DEF {STRUCT_FIELD_SIZE} EQU _RS - {STRUCT_FIELD}
     ; Set properties
-    DEF {STRUCT_FIELD_NBEL} EQU \1
-    DEF {STRUCT_FIELD_TYPE} EQUS STRSUB("\2", 2, 1)
+    DEF {STRUCT_FIELD_TYPE} EQUS STRSUB("\1", 2, 1)
 
     purge_nth_field_info
 
@@ -277,10 +265,6 @@ MACRO dstruct ; struct_type, instance_name[, ...]
         ; Define the struct's root label
         \2::
 
-        ; Define instance's properties from struct's
-        DEF \2_nb_fields EQU \1_nb_fields
-        DEF sizeof_\2    EQU sizeof_\1
-
         ; Define each field
         DEF ARG_NUM = 3
         FOR FIELD_ID, \1_nb_fields
@@ -290,26 +274,26 @@ MACRO dstruct ; struct_type, instance_name[, ...]
             \2_{{STRUCT_FIELD_NAME}}::
 
             ; Declare the space for the field
-            IF ARG_NUM > _NARG
-                ; RAM declaration; use `DS`
-                DS {STRUCT_FIELD_SIZE}
-            ELSE
-                ; ROM declaration; use `DB`, `DW`, or `DL`
-                IF !STRCMP("{{STRUCT_FIELD_TYPE}}", "B")
-                    ; Multi-byte fields may be initialized with
-                    ; a sequence of comma-separated bytes
-                    DS {STRUCT_FIELD_SIZE}, \<ARG_NUM>
-                ELSE
-                    REPT STRUCT_FIELD_NBEL
-                        D{{STRUCT_FIELD_TYPE}} \<ARG_NUM>
-                    ENDR
-                ENDC
+            IF ARG_NUM <= _NARG
+                ; ROM declaration; use `db`, `dw`, or `dl`
+                d{{STRUCT_FIELD_TYPE}} \<ARG_NUM>
                 REDEF ARG_NUM = ARG_NUM + 1
             ENDC
+            ; Add padding as necessary after the provided initializer
+            ; (possibly all of it, especially for RAM use)
+            IF {STRUCT_FIELD_SIZE} < @ - \2_{{STRUCT_FIELD_NAME}}
+                FAIL STRFMT("Initializer for %s is %u bytes, expected %u at most", "\2_{{STRUCT_FIELD_NAME}}", @ - \2_{{STRUCT_FIELD_NAME}}, {STRUCT_FIELD_SIZE})
+            ENDC
+            ds {STRUCT_FIELD_SIZE} - (@ - \2_{{STRUCT_FIELD_NAME}})
 
             purge_nth_field_info
         ENDR
         PURGE FIELD_ID, ARG_NUM
+
+        ; Define instance's properties from struct's
+        DEF \2_nb_fields EQU \1_nb_fields
+        DEF sizeof_\2    EQU @ - (\2)
+        structs_assert sizeof_\1 == sizeof_\2
 
         PURGE IS_NAMED_INSTANTIATION
     ENDC
@@ -318,13 +302,12 @@ ENDM
 
 ; Allocates space for an array of structs in memory.
 ; Each struct will have the index appended to its name **as decimal**.
-; For example: `dstructs 32, NPC, wNPC` will define
-; wNPC0, wNPC1, and so on until wNPC31.
-; This is a change from the previous version of RGBDS-structs,
-; where the index was uppercase hexadecimal.
-; Does not support data declarations because I think each struct should be
-; defined individually for that purpose.
+; For example: `dstructs 32, NPC, wNPC` will define `wNPC0`, `wNPC1`, and so on until `wNPC31`.
+; This is a change from the previous version of rgbds-structs, where the index was uppercase hexadecimal.
+; Does not support data declarations because I think each struct should be defined individually for that purpose.
 MACRO dstructs ; nb_structs, struct_type, instance_name
+    static_assert _NARG == 3, "`dstructs` only takes 3 arguments!"
+
     FOR STRUCT_ID, \1
         dstruct \2, \3{d:STRUCT_ID}
     ENDR
