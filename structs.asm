@@ -191,8 +191,7 @@ MACRO dstruct ; struct_type, instance_name[, ...]
 
             ; Find out which field the current argument is
             FOR FIELD_ID, \1_nb_fields
-                IF !STRCMP(STRLWR(STRSUB("{CUR_ARG}", 2, EQUAL_POS - 2)), \
-                           STRLWR("{\1_field{d:FIELD_ID}_name}"))
+                IF !STRCMP(STRSUB("{CUR_ARG}", 2, EQUAL_POS - 2), "{\1_field{d:FIELD_ID}_name}")
                     BREAK ; Match found!
                 ENDC
             ENDR
