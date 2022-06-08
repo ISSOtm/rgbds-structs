@@ -119,6 +119,36 @@ Having to remember the order of arguments is tedious and nondescript, though, so
 
 When using designated initializers, their order does not matter, but they must all be defined once and exactly once.
 
+#### Nesting structs
+
+`extends` can be used to nest a structure within another.
+
+```asm
+    struct Item
+        words 1, Name
+        words 1, Graphics
+        bytes 1, Type
+    end_struct
+
+    struct HealingItem
+        extends Item
+        bytes Strength
+    end_struct
+```
+
+This effectively copies the members of the source struct, meaning that you can now use `HealingItem_Name` as well as `HealingItem_Strength`.
+
+If a second argument is provided, the copied members will be prefixed with this string.
+
+```asm
+    struct SaveFile
+        longs 1, Checksum
+        extends NPC, Player
+    end_struct
+```
+
+`extends` can be used as many times as you want, anywhere within the struct. 
+
 ## Credits
 
 Written by [ISSOtm](https://github.com/ISSOtm) and [contributors](https://github.com/ISSOtm/rgbds-structs/graphs/contributors).

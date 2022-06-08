@@ -91,6 +91,31 @@ MACRO longs ; nb_longs, field_name
     new_field \1, RL, \2
 ENDM
 
+; Extends a new struct by an existing struct, effectively cloning its fields.
+MACRO extends ; struct_type
+    IF !DEF(\1_nb_fields)
+        FAIL "Struct \1 isn't defined!"
+    ENDC
+    FOR FIELD_ID, \1_nb_fields
+        ; Grab relevant information on each field and define a new element with
+        ; them.
+        get_nth_field_info \1, FIELD_ID
+        DEF EXTENDS_NBEL EQU STRUCT_FIELD_NBEL
+        DEF EXTENDS_TYPE EQUS STRCAT("R", "{{STRUCT_FIELD_TYPE}}")
+        DEF EXTENDS_NAME EQUS "{{STRUCT_FIELD_NAME}}"
+        purge_nth_field_info
+        ; Create a new field using the gathered info.
+        IF _NARG == 2
+            new_field EXTENDS_NBEL, {EXTENDS_TYPE}, \2_{EXTENDS_NAME}
+        ELSE
+            new_field EXTENDS_NBEL, {EXTENDS_TYPE}, {EXTENDS_NAME}
+        ENDC
+        PURGE EXTENDS_NBEL
+        PURGE EXTENDS_TYPE
+        PURGE EXTENDS_NAME
+    ENDR
+ENDM
+
 
 ; Defines EQUS strings pertaining to a struct's Nth field.
 ; Used internally by `new_field` and `dstruct`.
