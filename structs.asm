@@ -40,7 +40,7 @@ MACRO rgbds_structs_version ; version_string
     check_ver {EXPECTED_VERSION}, {CURRENT_VERSION}
 
     IF !DEF(EXPECTED_VERSION)
-        FAIL STRCAT("RGBDS-structs version \1 is required, ", \
+        FAIL STRCAT("rgbds-structs version \1 is required, ", \
                     "which is incompatible with current version ", \
                     STRRPL("{CURRENT_VERSION}", ",", "."))
     ENDC
@@ -93,8 +93,7 @@ DEF longs equs "new_field rl,"
 MACRO get_nth_field_info ; struct_name, field_id
     DEF STRUCT_FIELD      EQUS "\1_field{d:\2}"       ; prefix for other EQUS
     DEF STRUCT_FIELD_NAME EQUS "{STRUCT_FIELD}_name"  ; field's name
-    DEF STRUCT_FIELD_TYPE EQUS "{STRUCT_FIELD}_type"  ; type ("B", "W", or "L")
-    DEF STRUCT_FIELD_NBEL EQUS "{STRUCT_FIELD}_nb_el" ; number of elements
+    DEF STRUCT_FIELD_TYPE EQUS "{STRUCT_FIELD}_type"  ; type ("b", "l", or "l")
     DEF STRUCT_FIELD_SIZE EQUS "{STRUCT_FIELD}_size"  ; sizeof(type) * nb_el
 ENDM
 
@@ -104,7 +103,6 @@ MACRO purge_nth_field_info
     PURGE STRUCT_FIELD
     PURGE STRUCT_FIELD_NAME
     PURGE STRUCT_FIELD_TYPE
-    PURGE STRUCT_FIELD_NBEL
     PURGE STRUCT_FIELD_SIZE
 ENDM
 
@@ -126,7 +124,6 @@ MACRO new_field ; nb_elems, rs_type, field_name
     ; Compute field size
     DEF {STRUCT_FIELD_SIZE} EQU _RS - {STRUCT_FIELD}
     ; Set properties
-    DEF {STRUCT_FIELD_NBEL} EQU \2
     DEF {STRUCT_FIELD_TYPE} EQUS STRSUB("\1", 2, 1)
 
     purge_nth_field_info
@@ -257,22 +254,17 @@ MACRO dstruct ; struct_type, instance_name[, ...]
             \2_{{STRUCT_FIELD_NAME}}::
 
             ; Declare the space for the field
-            IF ARG_NUM > _NARG
-                ; RAM declaration; use `DS`
-                DS {STRUCT_FIELD_SIZE}
-            ELSE
-                ; ROM declaration; use `DB`, `DW`, or `DL`
-                IF !STRCMP("{{STRUCT_FIELD_TYPE}}", "B")
-                    ; Multi-byte fields may be initialized with
-                    ; a sequence of comma-separated bytes
-                    DS {STRUCT_FIELD_SIZE}, \<ARG_NUM>
-                ELSE
-                    REPT STRUCT_FIELD_NBEL
-                        D{{STRUCT_FIELD_TYPE}} \<ARG_NUM>
-                    ENDR
-                ENDC
+            IF ARG_NUM <= _NARG
+                ; ROM declaration; use `db`, `dw`, or `dl`
+                d{{STRUCT_FIELD_TYPE}} \<ARG_NUM>
                 REDEF ARG_NUM = ARG_NUM + 1
             ENDC
+            ; Add padding as necessary after the provided initializer
+            ; (possibly all of it, especially for RAM use)
+            IF {STRUCT_FIELD_SIZE} < @ - \2_{{STRUCT_FIELD_NAME}}
+                FAIL STRFMT("Initializer for %s is %u bytes, expected %u at most", "\2_{{STRUCT_FIELD_NAME}}", @ - \2_{{STRUCT_FIELD_NAME}}, {STRUCT_FIELD_SIZE})
+            ENDC
+            ds {STRUCT_FIELD_SIZE} - (@ - \2_{{STRUCT_FIELD_NAME}})
 
             purge_nth_field_info
         ENDR
@@ -290,12 +282,9 @@ ENDM
 
 ; Allocates space for an array of structs in memory.
 ; Each struct will have the index appended to its name **as decimal**.
-; For example: `dstructs 32, NPC, wNPC` will define
-; wNPC0, wNPC1, and so on until wNPC31.
-; This is a change from the previous version of RGBDS-structs,
-; where the index was uppercase hexadecimal.
-; Does not support data declarations because I think each struct should be
-; defined individually for that purpose.
+; For example: `dstructs 32, NPC, wNPC` will define `wNPC0`, `wNPC1`, and so on until `wNPC31`.
+; This is a change from the previous version of rgbds-structs, where the index was uppercase hexadecimal.
+; Does not support data declarations because I think each struct should be defined individually for that purpose.
 MACRO dstructs ; nb_structs, struct_type, instance_name
     static_assert _NARG == 3, "`dstructs` only takes 3 arguments!"
 
