@@ -147,6 +147,8 @@ If a second argument is provided, the copied members will be prefixed with this 
     end_struct
 ```
 
+This creates constants like `SaveFile_Player_Name`.
+
 `extends` can be used as many times as you want, anywhere within the struct. 
 
 ## Credits
