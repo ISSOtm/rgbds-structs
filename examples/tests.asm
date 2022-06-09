@@ -41,10 +41,20 @@ SECTION "Stats", ROM0
 	ASSERT Extended_Player_FirstName == 27 + sizeof_Stats
 
     struct Actor
+        longs 0, Position
         words 1, YPos
         words 1, XPos
-        dunion Money
+        alias Money
         words 1, Target
     end_struct
 
+    ASSERT Actor_Position == Actor_YPos
     ASSERT Actor_Money == Actor_Target
+    ASSERT sizeof_Actor == 6
+
+    dstruct Actor, _Test
+    dstruct Actor, _Test2, 1, 2, 3
+    dstruct Actor, _Test3, .Target=3, .XPos=2, .YPos=1
+
+    ASSERT _Test == _Test_Position
+    ASSERT _Test_Position == _Test_YPos

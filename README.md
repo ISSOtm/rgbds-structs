@@ -60,29 +60,16 @@ Note that no padding is inserted between members by rgbds-structs itself; insert
 
 Note also that whitespace is **not** allowed in a struct or member's name.
 
-Sometimes it's useful to give multiple names to the same area of memory, which can be accomplished with `dunion`.
+Sometimes it's useful to give multiple names to the same area of memory, which can be accomplished with `alias`.
 
 ```asm
     struct Actor
         words 1, YPos
         words 1, XPos
         ; Since dunion is used, the following field will have 2 names
-        dunion Money ; When this actor is the player, store how much money they have.
+        alias Money ; When this actor is the player, store how much money they have.
         words 1, Target ; When this actor is ann enemy, store their target actor.
     end_struct
-```
-
-However, a struct defined using `dunion` cannot be initialized using `dstructs`, as the field being initialized is ambiguous. For example, if a `dunion` is used to alias multiple fields, like this:
-```asm
-    struct Unionized
-        dunion AWord
-        bytes 1, AByte1
-        bytes 1, AByte2
-    end_struct
-
-    ; Is "40" referring to `AByte1` or `AWord`?
-    ; If it's referring to `AWord`, should it be set to $40 or $0040?
-    dstruct Unionized, StructInROM, 40
 ```
 
 `extends` can be used to nest a structure within another.

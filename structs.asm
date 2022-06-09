@@ -64,6 +64,7 @@ MACRO struct ; struct_name
     ; Define two internal variables for field definitions
     DEF STRUCT_NAME EQUS "\1"
     DEF NB_FIELDS = 0
+    DEF NB_NONALIASES = 0
 
     ; Initialize _RS to 0 for defining offset constants
     RSRESET
@@ -73,10 +74,11 @@ ENDM
 MACRO end_struct
     ; Define the number of fields and size in bytes
     DEF {STRUCT_NAME}_nb_fields EQU NB_FIELDS
+    DEF {STRUCT_NAME}_nb_nonaliases EQU NB_NONALIASES
     DEF sizeof_{STRUCT_NAME}    EQU _RS
 
     ; Purge the internal variables defined by `struct`
-    PURGE STRUCT_NAME, NB_FIELDS
+    PURGE STRUCT_NAME, NB_FIELDS, NB_NONALIASES
 ENDM
 
 
@@ -84,12 +86,7 @@ ENDM
 DEF bytes equs "new_field rb,"
 DEF words equs "new_field rw,"
 DEF longs equs "new_field rl,"
-
-MACRO dunion
-    new_field rb, 0, \1
-    ; Since initializing a struct with a union is ambiguous, disable it to prevent strange behavior.
-    DEF {STRUCT_NAME}_DISABLE_INITIALIZER EQU 1
-ENDM
+DEF alias equs "new_field rb, 0,"
 
 ; Extends a new struct by an existing struct, effectively cloning its fields.
 MACRO extends ; struct_type[, sub_struct_name]
@@ -115,7 +112,10 @@ MACRO extends ; struct_type[, sub_struct_name]
 
         purge_nth_field_info
 
-        REDEF NB_FIELDS = NB_FIELDS + 1
+        DEF NB_FIELDS += 1
+        IF {EXTENDS_FIELD}_size != 0
+            DEF NB_NONALIASES += 1
+        ENDC
         PURGE EXTENDS_FIELD
     ENDR
 ENDM
@@ -156,7 +156,10 @@ MACRO new_field ; rs_type, nb_elems, field_name
 
     purge_nth_field_info
 
-    REDEF NB_FIELDS = NB_FIELDS + 1
+    DEF NB_FIELDS += 1
+    IF \2 != 0
+        DEF NB_NONALIASES += 1
+    ENDC
 ENDM
 
 
@@ -181,10 +184,10 @@ ENDM
 MACRO dstruct ; struct_type, instance_name[, ...]
     IF !DEF(\1_nb_fields)
         FAIL "Struct \1 isn't defined!"
-    ELIF _NARG != 2 && _NARG != 2 + \1_nb_fields
+    ELIF _NARG != 2 && _NARG != 2 + \1_nb_nonaliases
         ; We must have either a RAM declaration (no data args)
         ; or a ROM one (RAM args + data args)
-        FAIL STRFMT("Expected 2 or %u args to `dstruct`, but got {d:_NARG}", 2 + \1_nb_fields)
+        FAIL STRFMT("Expected 2 or %u args to `dstruct`, but got {d:_NARG}", 2 + \1_nb_nonaliases)
     ENDC
 
     ; RGBASM always expands macro args, so `IF _NARG > 2 && STRIN("\3", "=")`
@@ -193,9 +196,6 @@ MACRO dstruct ; struct_type, instance_name[, ...]
     ; there because that would require a duplicated `ELSE`).
     DEF IS_NAMED_INSTANTIATION = 0
     IF _NARG > 2
-        IF DEF(\1_DISABLE_INITIALIZER)
-            FAIL "Structs containing a union cannot be initialized using dstruct."
-        ENDC
         REDEF IS_NAMED_INSTANTIATION = STRIN("\3", "=")
     ENDC
 
@@ -222,6 +222,9 @@ MACRO dstruct ; struct_type, instance_name[, ...]
             ; Find out which field the current argument is
             FOR FIELD_ID, \1_nb_fields
                 IF !STRCMP(STRSUB("{CUR_ARG}", 2, EQUAL_POS - 2), "{\1_field{d:FIELD_ID}_name}")
+                    IF \1_field{d:FIELD_ID}_size == 0
+                        FAIL "Cannot initialize an alias"
+                    ENDC
                     BREAK ; Match found!
                 ENDC
             ENDR
@@ -245,8 +248,10 @@ MACRO dstruct ; struct_type, instance_name[, ...]
         ; invoke the macro again but without names
         DEF ORDERED_ARGS EQUS "\1, \2"
         FOR FIELD_ID, \1_nb_fields
-            REDEF ORDERED_ARGS EQUS "{ORDERED_ARGS}, {FIELD_{d:FIELD_ID}_INITIALIZER}"
-            PURGE FIELD_{d:FIELD_ID}_ARG, FIELD_{d:FIELD_ID}_INITIALIZER
+            IF \1_field{d:FIELD_ID}_size != 0
+                REDEF ORDERED_ARGS EQUS "{ORDERED_ARGS}, {FIELD_{d:FIELD_ID}_INITIALIZER}"
+                PURGE FIELD_{d:FIELD_ID}_ARG, FIELD_{d:FIELD_ID}_INITIALIZER
+            ENDC
         ENDR
         PURGE FIELD_ID
 
@@ -268,18 +273,20 @@ MACRO dstruct ; struct_type, instance_name[, ...]
             ; Define the label for the field
             \2_{{STRUCT_FIELD_NAME}}::
 
-            ; Declare the space for the field
-            IF ARG_NUM <= _NARG
-                ; ROM declaration; use `db`, `dw`, or `dl`
-                d{{STRUCT_FIELD_TYPE}} \<ARG_NUM>
-                REDEF ARG_NUM = ARG_NUM + 1
+            IF STRUCT_FIELD_SIZE != 0
+                ; Declare the space for the field
+                IF ARG_NUM <= _NARG
+                    ; ROM declaration; use `db`, `dw`, or `dl`
+                    d{{STRUCT_FIELD_TYPE}} \<ARG_NUM>
+                    REDEF ARG_NUM = ARG_NUM + 1
+                ENDC
+                ; Add padding as necessary after the provided initializer
+                ; (possibly all of it, especially for RAM use)
+                IF {STRUCT_FIELD_SIZE} < @ - \2_{{STRUCT_FIELD_NAME}}
+                    FAIL STRFMT("Initializer for %s is %u bytes, expected %u at most", "\2_{{STRUCT_FIELD_NAME}}", @ - \2_{{STRUCT_FIELD_NAME}}, {STRUCT_FIELD_SIZE})
+                ENDC
+                ds {STRUCT_FIELD_SIZE} - (@ - \2_{{STRUCT_FIELD_NAME}})
             ENDC
-            ; Add padding as necessary after the provided initializer
-            ; (possibly all of it, especially for RAM use)
-            IF {STRUCT_FIELD_SIZE} < @ - \2_{{STRUCT_FIELD_NAME}}
-                FAIL STRFMT("Initializer for %s is %u bytes, expected %u at most", "\2_{{STRUCT_FIELD_NAME}}", @ - \2_{{STRUCT_FIELD_NAME}}, {STRUCT_FIELD_SIZE})
-            ENDC
-            ds {STRUCT_FIELD_SIZE} - (@ - \2_{{STRUCT_FIELD_NAME}})
 
             purge_nth_field_info
         ENDR

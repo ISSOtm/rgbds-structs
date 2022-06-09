@@ -46,14 +46,12 @@ struct Trimmed
     end-struct
 ; "Macro 'end' not defined"
 
-; Using dstruct to initialize a struct containing a dunion
+; Initalizing an alias
     struct Actor
+    longs 0, Position
     words 1, YPos
     words 1, XPos
-    dunion Money
+    alias Money
     words 1, Target
     end_struct
-
-    ; This is ambiguous; it's not clear whether Player_Money or Player_Target is being initialized.
-    dstruct Actor, Player, 0, 0, 400
-; "Structs containing a union cannot be initialized using dstruct."
+; "Cannot initialize an alias"
