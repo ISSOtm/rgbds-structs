@@ -26,3 +26,16 @@ SECTION "Stats", ROM0
 
 	dstruct Multi, Anon, 1\, 2
 	dstruct Multi, Named, .test=1\, 2
+
+	struct Extended
+	bytes 27, FirstField
+	extends Stats
+	extends Stats, Player
+	end_struct
+
+	dstruct Extended, _MyExtendedStruct
+	dstruct Extended, _MyExtendedStruct2, "debug test", "foo", "bar", 100, 100, "foo", "bar", 100, 100
+	dstruct Extended, _MyExtendedStruct3, .FirstField="debug test", .HP=100, .LastName="bar", .MaxHP=100, .FirstName="foo", .Player_FirstName="foo", .Player_LastName="bar", .Player_HP=100, .Player_MaxHP=100
+
+	ASSERT Extended_FirstName == 27
+	ASSERT Extended_Player_FirstName == 27 + sizeof_Stats

@@ -85,6 +85,35 @@ DEF bytes equs "new_field rb,"
 DEF words equs "new_field rw,"
 DEF longs equs "new_field rl,"
 
+; Extends a new struct by an existing struct, effectively cloning its fields.
+MACRO extends ; struct_type[, sub_struct_name]
+    IF !DEF(\1_nb_fields)
+        FAIL "Struct \1 isn't defined!"
+    ENDC
+    IF _NARG != 1 && _NARG != 2
+        FAIL "Invalid number of arguments, expected 1 or 2"
+    ENDC
+    FOR FIELD_ID, \1_nb_fields
+        DEF EXTENDS_FIELD EQUS "\1_field{d:FIELD_ID}"
+        get_nth_field_info {STRUCT_NAME}, NB_FIELDS
+
+        IF _NARG == 1
+            DEF {STRUCT_FIELD_NAME} EQUS "{{EXTENDS_FIELD}_name}"
+        ELSE
+            DEF {STRUCT_FIELD_NAME} EQUS "\2_{{EXTENDS_FIELD}_name}"
+        ENDC
+        DEF {STRUCT_FIELD} RB {EXTENDS_FIELD}_size
+        DEF {STRUCT_NAME}_{{STRUCT_FIELD_NAME}} EQU {STRUCT_FIELD}
+        DEF {STRUCT_FIELD_SIZE} EQU {EXTENDS_FIELD}_size
+        DEF {STRUCT_FIELD_TYPE} EQUS "{{EXTENDS_FIELD}_type}"
+
+        purge_nth_field_info
+
+        REDEF NB_FIELDS = NB_FIELDS + 1
+        PURGE EXTENDS_FIELD
+    ENDR
+ENDM
+
 
 ; Defines EQUS strings pertaining to a struct's Nth field.
 ; Used internally by `new_field` and `dstruct`.
@@ -101,7 +130,7 @@ DEF purge_nth_field_info equs "PURGE STRUCT_FIELD, STRUCT_FIELD_NAME, STRUCT_FIE
 
 ; Defines a field with a given RS type (`rb`, `rw`, or `rl`).
 ; Used internally by `bytes`, `words`, and `longs`.
-MACRO new_field ; nb_elems, rs_type, field_name
+MACRO new_field ; rs_type, nb_elems, field_name
     IF !DEF(STRUCT_NAME) || !DEF(NB_FIELDS)
         FAIL "Please start defining a struct, using `struct`"
     ENDC
