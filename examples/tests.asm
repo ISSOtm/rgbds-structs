@@ -39,3 +39,12 @@ SECTION "Stats", ROM0
 
 	ASSERT Extended_FirstName == 27
 	ASSERT Extended_Player_FirstName == 27 + sizeof_Stats
+
+    struct Actor
+        words 1, YPos
+        words 1, XPos
+        dunion Money
+        words 1, Target
+    end_struct
+
+    ASSERT Actor_Money == Actor_Target

@@ -85,6 +85,12 @@ DEF bytes equs "new_field rb,"
 DEF words equs "new_field rw,"
 DEF longs equs "new_field rl,"
 
+MACRO dunion
+    new_field rb, 0, \1
+    ; Since initializing a struct with a union is ambiguous, disable it to prevent strange behavior.
+    DEF {STRUCT_NAME}_DISABLE_INITIALIZER EQU 1
+ENDM
+
 ; Extends a new struct by an existing struct, effectively cloning its fields.
 MACRO extends ; struct_type[, sub_struct_name]
     IF !DEF(\1_nb_fields)
@@ -187,6 +193,9 @@ MACRO dstruct ; struct_type, instance_name[, ...]
     ; there because that would require a duplicated `ELSE`).
     DEF IS_NAMED_INSTANTIATION = 0
     IF _NARG > 2
+        IF DEF(\1_DISABLE_INITIALIZER)
+            FAIL "Structs containing a union cannot be initialized using dstruct."
+        ENDC
         REDEF IS_NAMED_INSTANTIATION = STRIN("\3", "=")
     ENDC
 
