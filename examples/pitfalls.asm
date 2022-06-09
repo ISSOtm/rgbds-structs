@@ -54,4 +54,6 @@ struct Trimmed
     alias Money
     words 1, Target
     end_struct
+    
+    dstruct Actor, MyActorWithMoney, .Money=100
 ; "Cannot initialize an alias"
