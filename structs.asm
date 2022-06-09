@@ -273,7 +273,7 @@ MACRO dstruct ; struct_type, instance_name[, ...]
             ; Define the label for the field
             \2_{{STRUCT_FIELD_NAME}}::
 
-            IF STRUCT_FIELD_SIZE != 0
+            IF STRUCT_FIELD_SIZE != 0 ; Skip aliases
                 ; Declare the space for the field
                 IF ARG_NUM <= _NARG
                     ; ROM declaration; use `db`, `dw`, or `dl`

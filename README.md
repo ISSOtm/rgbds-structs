@@ -67,10 +67,12 @@ Sometimes it's useful to give multiple names to the same area of memory, which c
         words 1, YPos
         words 1, XPos
         ; Since dunion is used, the following field will have 2 names
-        alias Money ; When this actor is the player, store how much money they have.
-        words 1, Target ; When this actor is ann enemy, store their target actor.
+        alias Money ; If this actor is the player, store how much money they have.
+        words 1, Target ; If this actor is an enemy, store their target actor.
     end_struct
 ```
+
+Passing a size of 0 to any of `bytes`, `words`, or `longs` works the same.
 
 `extends` can be used to nest a structure within another.
 
