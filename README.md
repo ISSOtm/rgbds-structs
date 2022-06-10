@@ -22,6 +22,9 @@ Examples can be found in [the `examples` folder](https://github.com/ISSOtm/rgbds
 
 ## Usage
 
+Please do not rely on any macro or symbol not documented below, as they are not considered part of the API, and may unexpectedly break between releases.
+RGBDS does not allow any scoping, so macros are "leaky"; apologies if you get name clashes.
+
 ### Ensuring version compatibility
 
 rgbds-structs follows [semantic versioning](https://semver.org), so you can know if there are breaking changes between releases.
@@ -36,6 +39,8 @@ You can also easily enforce this in your code, using the `rgbds_structs_version`
 3. Finally, you must close the declaration with `end_struct`.
    This is required to properly define all of the struct's constants, and to be able to declare another struct (which will otherwise fail with a descriptive error message).
    Please note that forgetting to add an `end_struct` does not always yield any error messages, so please be careful.
+
+Please do not use anything other than the prescribed macros between `struct` and `end_struct` (especially the `_RS` family of directives), as this may break the macros' operation.
 
 Example of correct usage:
 
@@ -107,7 +112,7 @@ If a second argument is provided, the copied members will be prefixed with this 
 
 This creates constants like `SaveFile_Player_Name`.
 
-`extends` can be used as many times as you want, anywhere within the struct. 
+`extends` can be used as many times as you want, anywhere within the struct.
 
 #### Defined constants
 
