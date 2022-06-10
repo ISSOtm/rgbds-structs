@@ -22,6 +22,11 @@ Examples can be found in [the `examples` folder](https://github.com/ISSOtm/rgbds
 
 ## Usage
 
+### Ensuring version compatibility
+
+rgbds-structs follows [semantic versioning](https://semver.org), so you can know if there are breaking changes between releases.
+You can also easily enforce this in your code, using the `rgbds_structs_version` macro: simply call it with the version of rgbds-structs you require (`rgbds_structs_version 2.0.0`), and it will error out if a (potentially) incompatible version is used.
+
 ### Declaring a struct
 
 1. Begin the declaration with `struct StructName`.
