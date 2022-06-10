@@ -77,6 +77,10 @@ MACRO end_struct
     DEF {STRUCT_NAME}_nb_nonaliases EQU NB_NONALIASES
     DEF sizeof_{STRUCT_NAME}    EQU _RS
 
+    IF DEF(STRUCTS_EXPORT_CONSTANTS)
+        EXPORT {STRUCT_NAME}_nb_fields, sizeof_{STRUCT_NAME}
+    ENDC
+
     ; Purge the internal variables defined by `struct`
     PURGE STRUCT_NAME, NB_FIELDS, NB_NONALIASES
 ENDM
@@ -106,6 +110,9 @@ MACRO extends ; struct_type[, sub_struct_name]
             DEF {STRUCT_FIELD_NAME} EQUS "\2_{{EXTENDS_FIELD}_name}"
         ENDC
         DEF {STRUCT_FIELD} RB {EXTENDS_FIELD}_size
+        IF DEF(STRUCTS_EXPORT_CONSTANTS)
+            EXPORT {STRUCT_FIELD}
+        ENDC
         DEF {STRUCT_NAME}_{{STRUCT_FIELD_NAME}} EQU {STRUCT_FIELD}
         DEF {STRUCT_FIELD_SIZE} EQU {EXTENDS_FIELD}_size
         DEF {STRUCT_FIELD_TYPE} EQUS "{{EXTENDS_FIELD}_type}"
@@ -147,6 +154,9 @@ MACRO new_field ; rs_type, nb_elems, field_name
     DEF {STRUCT_FIELD_NAME} EQUS "\3"
     ; Set field offset
     DEF {STRUCT_FIELD} \1 (\2)
+    IF DEF(STRUCTS_EXPORT_CONSTANTS)
+        EXPORT {STRUCT_FIELD}
+    ENDC
     ; Alias this in a human-comprehensible manner
     DEF {STRUCT_NAME}_\3 EQU {STRUCT_FIELD}
     ; Compute field size
@@ -301,6 +311,10 @@ MACRO dstruct ; struct_type, instance_name[, ...]
         DEF \2_nb_fields EQU \1_nb_fields
         DEF sizeof_\2    EQU @ - (\2)
         structs_assert sizeof_\1 == sizeof_\2
+
+        IF DEF(STRUCTS_EXPORT_CONSTANTS)
+            EXPORT \2_nb_fields, sizeof_\2
+        ENDC
 
         PURGE IS_NAMED_INSTANTIATION
     ENDC

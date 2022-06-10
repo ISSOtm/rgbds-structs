@@ -127,6 +127,8 @@ None of these constants are exported by default, but you can [`export` them manu
 Since `dstruct` and family require the constants to be defined at assembling time, those macros require the former solution.
 However, the latter solution may decrease build times if you have a lot of source files.
 
+If you want the constants to be exported by default, define symbol `STRUCTS_EXPORT_CONSTANTS` before calling `struct`.
+
 ### Using a struct
 
 **The following functionality requires the struct to have been defined earlier in the same RGBASM invocation (aka "translation unit").**
@@ -151,6 +153,7 @@ It is unnecessary to put a label right before `dstruct`, since a label is declar
 
 Two extra constants are declared, that mirror the struct's: `sizeof_Player` would be equal to `sizeof_NPC`, and `Player_nb_fields` would equal `NPC_nb_fields` (sse below).
 These constants will keep their values even if the originals, such as `sizeof_NPC`, are `PURGE`'d.
+Like structs' constants, these are not exported unless `STRUCTS_EXPORT_CONSTANTS` is defined.
 
 #### Defining data from a struct
 
