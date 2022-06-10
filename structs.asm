@@ -265,6 +265,11 @@ MACRO dstruct ; struct_type, instance_name[, ...]
         ; Define the struct's root label
         \2::
 
+        IF DEF(STRUCT_SEPARATOR)
+            DEF DSTRUCT_SEPARATOR equs "{STRUCT_SEPARATOR}"
+        ELSE
+            DEF DSTRUCT_SEPARATOR equs "_"
+        ENDC
         ; Define each field
         DEF ARG_NUM = 3
         FOR FIELD_ID, \1_nb_fields
@@ -290,7 +295,7 @@ MACRO dstruct ; struct_type, instance_name[, ...]
 
             purge_nth_field_info
         ENDR
-        PURGE FIELD_ID, ARG_NUM
+        PURGE FIELD_ID, ARG_NUM, DSTRUCT_SEPARATOR
 
         ; Define instance's properties from struct's
         DEF \2_nb_fields EQU \1_nb_fields

@@ -108,7 +108,8 @@ memcpy_small:
 
 SECTION "Structs", WRAM0 ; But it can be HRAM, WRAMX, or SRAM, too!
 
-    dstruct NPC, wPlayer
-
     dstruct RawPalette, wBGPalette0
     dstruct RawPalette, wOBJPalette0
+
+    DEF STRUCT_SEPARATOR equs "."
+    dstruct NPC, wPlayer ; Defines `wPlayer.YPos`, etc.

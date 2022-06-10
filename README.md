@@ -137,6 +137,11 @@ This will define the following labels: `Player` (pointing to the struct's first 
 These are all declared as **exported** labels, and will thus be available at link time.
 (You can `PURGE` them if you do not want this.)
 
+You can customize the label naming by defining the string equate `STRUCT_SEPARATOR`; it will replace the underscore in the above.
+Of particular interest is `DEF STRUCT_SEPARATOR equs "."`, which causes members to be defined as local labels, but prevents the "root" label from itself being a local label.
+(This is because `Player.YPos` is a valid RGBDS symbol name, but `.player.YPos` is not.)
+`STRUCT_SEPARATOR` can be changed and even `PURGE`d between invocations of `dstruct` and family.
+
 It is unnecessary to put a label right before `dstruct`, since a label is declared at the struct's root.
 
 Two extra constants are declared, that mirror the struct's: `sizeof_Player` would be equal to `sizeof_NPC`, and `Player_nb_fields` would equal `NPC_nb_fields` (sse below).
