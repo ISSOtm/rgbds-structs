@@ -37,12 +37,12 @@ Example of correct usage:
 ```asm
     ; RGBASM requires whitespace before the macro name
     struct NPC
-    words 1, YPos         ; 2 bytes
-    words 1, XPos         ; 2 bytes
-    bytes 1, YBox         ; 1 byte
-    bytes 1, XBox         ; 1 byte
-    bytes 6, Name         ; 6 bytes
-    longs 4, MovementData ; 8 bytes
+    words 1, YPos         ;  2 bytes
+    words 1, XPos         ;  2 bytes
+    bytes 1, YBox         ;  1 byte
+    bytes 1, XBox         ;  1 byte
+    bytes 6, Name         ;  6 bytes
+    longs 4, MovementData ; 16 bytes
     end_struct
 ```
 
@@ -59,6 +59,20 @@ Note that no padding is inserted between members by rgbds-structs itself; insert
 (Some like to insert an extra level of indentation for member definitions. This is not required, but may help with readability.)
 
 Note also that whitespace is **not** allowed in a struct or member's name.
+
+Sometimes it's useful to give multiple names to the same area of memory, which can be accomplished with `alias`.
+
+```asm
+    struct Actor
+        words 1, YPos
+        words 1, XPos
+        ; Since dunion is used, the following field will have 2 names
+        alias Money ; If this actor is the player, store how much money they have.
+        words 1, Target ; If this actor is an enemy, store their target actor.
+    end_struct
+```
+
+Passing a size of 0 to any of `bytes`, `words`, or `longs` works the same.
 
 `extends` can be used to nest a structure within another.
 

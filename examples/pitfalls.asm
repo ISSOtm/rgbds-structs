@@ -45,3 +45,15 @@ struct Trimmed
     bytes 1, Foo
     end-struct
 ; "Macro 'end' not defined"
+
+; Initalizing an alias
+    struct Actor
+    longs 0, Position
+    words 1, YPos
+    words 1, XPos
+    alias Money
+    words 1, Target
+    end_struct
+    
+    dstruct Actor, MyActorWithMoney, .Money=100
+; "Cannot initialize an alias"
