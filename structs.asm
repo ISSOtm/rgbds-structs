@@ -313,7 +313,7 @@ ENDM
 ; This is a change from the previous version of rgbds-structs, where the index was uppercase hexadecimal.
 ; Does not support data declarations because I think each struct should be defined individually for that purpose.
 MACRO dstructs ; nb_structs, struct_type, instance_name
-    IF _NARG == 3
+    IF _NARG != 3
         FAIL "`dstructs` only takes 3 arguments!"
     ENDC
 

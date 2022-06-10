@@ -173,6 +173,12 @@ Having to remember the order of arguments is tedious and nondescript, though, so
 
 When using designated initializers, their order does not matter, but they must all be defined once and exactly once.
 
+#### Defining an array of structs
+
+It's possible to copy-paste a few calls to `dstruct` to create an array, but `dstructs` automates the task.
+Its first argument is the number of structs to define, and the next two are passed as-is to `dstruct`, except that a decimal index is appended to the struct name.
+`dstructs` does not support data arguments; make manual calls to `dstruct` for that—you would have to pass all the data arguments individually anyway.
+
 ## Credits
 
 Written by [ISSOtm](https://github.com/ISSOtm) and [contributors](https://github.com/ISSOtm/rgbds-structs/graphs/contributors).

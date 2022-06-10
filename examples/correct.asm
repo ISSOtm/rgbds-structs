@@ -113,3 +113,5 @@ SECTION "Structs", WRAM0 ; But it can be HRAM, WRAMX, or SRAM, too!
 
     DEF STRUCT_SEPARATOR equs "."
     dstruct NPC, wPlayer ; Defines `wPlayer.YPos`, etc.
+
+    dstructs 16, NPC, wActors ; Defines `wNPC0`, `wNPC1`, and so on up to `wNPC15`; also all associated members
