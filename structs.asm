@@ -23,10 +23,7 @@
 
 
 
-DEF STRUCTS_VERSION equs "2.0.0"
-MACRO structs_assert
-    assert (\1), "rgbds-structs {STRUCTS_VERSION} bug on line {d:__LINE__}. Please report at https://github.com/ISSOtm/rgbds-structs, and share your code there!"
-ENDM
+DEF STRUCTS_VERSION equs "3.0.0"
 
 
 ; Call with the expected RGBDS-structs version string to ensure your code
@@ -310,7 +307,7 @@ MACRO dstruct ; struct_type, instance_name[, ...]
         ; Define instance's properties from struct's
         DEF \2_nb_fields EQU \1_nb_fields
         DEF sizeof_\2    EQU @ - (\2)
-        structs_assert sizeof_\1 == sizeof_\2
+        assert sizeof_\1 == sizeof_\2, "rgbds-structs {STRUCTS_VERSION} bug on line {d:__LINE__}. Please report at https://github.com/ISSOtm/rgbds-structs, and share your code there!"
 
         IF DEF(STRUCTS_EXPORT_CONSTANTS)
             EXPORT \2_nb_fields, sizeof_\2
