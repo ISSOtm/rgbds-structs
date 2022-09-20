@@ -1,7 +1,7 @@
 INCLUDE "../structs.asm"
 
     ; Check for the expected RGBDS-structs version
-    rgbds_structs_version 2.0.0
+    rgbds_structs_version 3.0.0
 
 
     ; Struct declarations (ideally in a separate file, but grouped here for simplicity)
