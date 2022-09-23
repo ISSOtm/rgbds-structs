@@ -1,6 +1,6 @@
 ; MIT License
 ;
-; Copyright (c) 2018-2021 Eldred Habert and contributors
+; Copyright (c) 2018-2022 Eldred Habert and contributors
 ; Originally hosted at https://github.com/ISSOtm/rgbds-structs
 ;
 ; Permission is hereby granted, free of charge, to any person obtaining a copy
