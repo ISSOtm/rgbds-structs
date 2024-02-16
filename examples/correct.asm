@@ -1,4 +1,4 @@
-INCLUDE "../structs.asm"
+INCLUDE "../structs.inc"
 
     ; Check for the expected RGBDS-structs version
     rgbds_structs_version 3.0.0

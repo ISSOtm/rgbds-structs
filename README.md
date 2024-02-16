@@ -14,8 +14,8 @@ If you find a compatibility issue, [please file it here](https://github.com/ISSO
 
 ## Installing
 
-This doesn't actually require any installing, only to `INCLUDE` the file `structs.asm` in your project.
-This project is licensed under [the MIT license](https://github.com/ISSOtm/rgbds-structs/blob/master/LICENSE), which allows including a copy of `structs.asm` in your project.
+This doesn't actually require any installing, only to `INCLUDE` the file `structs.inc` in your project.
+This project is licensed under [the MIT license](https://github.com/ISSOtm/rgbds-structs/blob/master/LICENSE), which allows including a copy of `structs.inc` in your project.
 I only ask that you credit me, please :)
 
 Examples can be found in [the `examples` folder](https://github.com/ISSOtm/rgbds-structs/tree/master/examples); both of what to do, and what not to do with explanations of the error messages you should get.

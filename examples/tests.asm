@@ -3,7 +3,7 @@
 ; but everything here is tested to work fine.
 ; Use it as inspiration if you want.
 
-INCLUDE "../structs.asm"
+INCLUDE "../structs.inc"
 
 
 SECTION "Stats", ROM0

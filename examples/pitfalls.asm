@@ -5,14 +5,14 @@
 
 
 
-; Not including `structs.asm` (it happens!)
-INCLUDE "../structs.asm"
-; "Error: Unable to open included file '../structs.asm'"
+; Not including `structs.inc` (it happens!)
+INCLUDE "../structs.inc"
+; "Error: Unable to open included file '../structs.inc'"
 ; "Macro 'struct' not defined"
 
-; Including `structs.asm` twice
-INCLUDE "../structs.asm"
-; A slew of "'xxx' already defined in structs.asm(yyy)" messages
+; Including `structs.inc` twice
+INCLUDE "../structs.inc"
+; A slew of "'xxx' already defined in structs.inc(yyy)" messages
 
 
 ; No spacing before macro names
