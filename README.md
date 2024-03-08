@@ -151,7 +151,7 @@ Of particular interest is `DEF STRUCT_SEPARATOR equs "."`, which causes members 
 
 It is unnecessary to put a label right before `dstruct`, since a label is declared at the struct's root.
 
-Two extra constants are declared, that mirror the struct's: `sizeof_Player` would be equal to `sizeof_NPC`, and `Player_nb_fields` would equal `NPC_nb_fields` (sse below).
+Unless the struct's name contains a dot `.`, two extra constants are declared, that mirror the struct's: `sizeof_Player` would be equal to `sizeof_NPC`, and `Player_nb_fields` would equal `NPC_nb_fields` (sse below).
 These constants will keep their values even if the originals, such as `sizeof_NPC`, are `PURGE`'d.
 Like structs' constants, these are not exported unless `STRUCTS_EXPORT_CONSTANTS` is defined.
 

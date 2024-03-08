@@ -308,12 +308,14 @@ MACRO dstruct ; struct_type, instance_name[, ...]
         PURGE FIELD_ID, ARG_NUM, DSTRUCT_SEPARATOR
 
         ; Define instance's properties from struct's
-        DEF \2_nb_fields EQU \1_nb_fields
-        DEF sizeof_\2    EQU @ - (\2)
-        structs_assert sizeof_\1 == sizeof_\2
+        IF !STRIN("\2", ".")
+            DEF \2_nb_fields EQU \1_nb_fields
+            DEF sizeof_\2    EQU @ - (\2)
+            structs_assert sizeof_\1 == sizeof_\2
 
-        IF DEF(STRUCTS_EXPORT_CONSTANTS)
-            EXPORT \2_nb_fields, sizeof_\2
+            IF DEF(STRUCTS_EXPORT_CONSTANTS)
+                EXPORT \2_nb_fields, sizeof_\2
+            ENDC
         ENDC
 
         PURGE IS_NAMED_INSTANTIATION
