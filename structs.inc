@@ -206,7 +206,7 @@ MACRO dstruct ; struct_type, instance_name[, ...]
     ; there because that would require a duplicated `ELSE`).
     DEF IS_NAMED_INSTANTIATION = 0
     IF _NARG > 2
-        REDEF IS_NAMED_INSTANTIATION = STRIN("\3", "=")
+        DEF IS_NAMED_INSTANTIATION = !STRCMP(STRSUB("\3", 1, 1), ".") && STRIN("\3", "=")
     ENDC
 
     IF IS_NAMED_INSTANTIATION
