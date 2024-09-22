@@ -248,9 +248,9 @@ MACRO dstruct ; struct_type, instance_name[, ...]
             ; Save the argument to report in case a later argument conflicts with it
             DEF FIELD_{d:FIELD_ID}_ARG EQUS "{CUR_ARG}"
 
-            ; Escape any commas in a multi-byte argument initializer so it can
-            ; be passed as one argument to the nested ordered instantiation
-            DEF FIELD_{d:FIELD_ID}_INITIALIZER EQUS STRRPL(STRSUB("{CUR_ARG}", EQUAL_POS + 1), ",", "\\,")
+            ; Enclose argument initializers in parentheses so any commas inside
+            ; it will not start a new argument
+            DEF FIELD_{d:FIELD_ID}_INITIALIZER EQUS STRCAT("(", STRSUB("{CUR_ARG}", EQUAL_POS + 1), ")")
         ENDR
         PURGE ARG_NUM, CUR_ARG
 
@@ -266,8 +266,9 @@ MACRO dstruct ; struct_type, instance_name[, ...]
         PURGE FIELD_ID
 
         ; Do the nested ordered instantiation
+        DEF WAS_NAMED_INSTANTIATION = 1
         dstruct {ORDERED_ARGS} ; purges IS_NAMED_INSTANTIATION
-        PURGE ORDERED_ARGS
+        PURGE ORDERED_ARGS, WAS_NAMED_INSTANTIATION
 
     ELSE
         ; This is an ordered instantiation, not a named one.
@@ -292,7 +293,13 @@ MACRO dstruct ; struct_type, instance_name[, ...]
                 ; Declare the space for the field
                 IF ARG_NUM <= _NARG
                     ; ROM declaration; use `db`, `dw`, or `dl`
-                    d{{STRUCT_FIELD_TYPE}} \<ARG_NUM>
+                    DEF FIELD_INITIALIZER EQUS "\<ARG_NUM>"
+                    IF DEF(WAS_NAMED_INSTANTIATION)
+                        ; Remove the parentheses that named instantiation placed around the field initializer
+                        REDEF FIELD_INITIALIZER EQUS STRSUB("{FIELD_INITIALIZER}", 2, STRLEN("{FIELD_INITIALIZER}") - 2)
+                    ENDC
+                    d{{STRUCT_FIELD_TYPE}} {FIELD_INITIALIZER}
+                    PURGE FIELD_INITIALIZER
                     REDEF ARG_NUM = ARG_NUM + 1
                 ENDC
                 ; Add padding as necessary after the provided initializer
