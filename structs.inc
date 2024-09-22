@@ -1,6 +1,6 @@
 ; MIT License
 ;
-; Copyright (c) 2018-2022 Eldred Habert and contributors
+; Copyright (c) 2018-2024 Eldred Habert and contributors
 ; Originally hosted at https://github.com/ISSOtm/rgbds-structs
 ;
 ; Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,7 +23,7 @@
 
 
 
-DEF STRUCTS_VERSION equs "4.0.0"
+DEF STRUCTS_VERSION equs "4.0.1"
 MACRO structs_assert
     assert (\1), "rgbds-structs {STRUCTS_VERSION} bug. Please report at https://github.com/ISSOtm/rgbds-structs, and share the above stack trace *and* your code there!"
 ENDM
@@ -300,7 +300,7 @@ MACRO dstruct ; struct_type, instance_name[, ...]
                     ENDC
                     d{{STRUCT_FIELD_TYPE}} {FIELD_INITIALIZER}
                     PURGE FIELD_INITIALIZER
-                    REDEF ARG_NUM = ARG_NUM + 1
+                    DEF ARG_NUM += 1
                 ENDC
                 ; Add padding as necessary after the provided initializer
                 ; (possibly all of it, especially for RAM use)

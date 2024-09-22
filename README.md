@@ -7,8 +7,8 @@ A [RGBDS](https://rgbds.gbdev.io) macro pack that provides `struct`-like functio
 Please select a version from [the releases](https://github.com/ISSOtm/rgbds-structs/releases), and download either of the "source code" links.
 (If you do not know what a `.tar.gz` file is, download the `.zip` one.)
 
-The [latest rgbds-structs version](https://github.com/ISSOtm/rgbds-structs/releases/latest) is **4.0.0**.
-It will only work with RGBDS 0.5.1 and newer.
+The [latest rgbds-structs version](https://github.com/ISSOtm/rgbds-structs/releases/latest) is **4.0.1**.
+It will only work with RGBDS 0.6.0 and newer.
 A previous version, [1.3.0](https://github.com/ISSOtm/rgbds-structs/releases/tag/v1.3.0), is confirmed to work with RGBDS 0.3.7, but should also work with versions 0.3.3 and newer.
 If you find a compatibility issue, [please file it here](https://github.com/ISSOtm/rgbds-structs/issues/new).
 
