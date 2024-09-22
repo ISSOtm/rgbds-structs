@@ -300,7 +300,7 @@ MACRO dstruct ; struct_type, instance_name[, ...]
                     ENDC
                     d{{STRUCT_FIELD_TYPE}} {FIELD_INITIALIZER}
                     PURGE FIELD_INITIALIZER
-                    REDEF ARG_NUM = ARG_NUM + 1
+                    DEF ARG_NUM += 1
                 ENDC
                 ; Add padding as necessary after the provided initializer
                 ; (possibly all of it, especially for RAM use)
