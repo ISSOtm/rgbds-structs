@@ -114,6 +114,76 @@ This creates constants like `SaveFile_Player_Name`.
 
 `extends` can be used as many times as you want, anywhere within the struct.
 
+#### Declaring an enum
+
+An enum is traditionally a list of constants assigned unique and contiguous values.
+The `enum` macro may be used for this purpose:
+
+```asm
+    enum Item
+        case Useless
+        case Healing
+        case Weapon
+    end_enum
+```
+
+This is equivalent to the following `def`s:
+
+```asm
+rsreset
+def Item_Useless rb
+def Item_Healing rb
+def Item_Weapon rb
+def maxof_Item rb
+```
+
+However, `enum` `case`s may also have structures associated with them.
+This creates a [tagged union](https://en.wikipedia.org/wiki/Tagged_union),
+in which each enum value represents a mutually exclusive set of inner fields.
+
+```asm
+    enum Item
+        case Useless
+        case Healing
+            ; The "body" of a case is just like any other `struct` declaration.
+            bytes 1, Amount
+        case Weapon
+            bytes 1, Damage
+            bytes 1, Durability
+    end_enum
+```
+
+This is equivalent to the following structure declarations:
+
+```asm
+rsreset
+def Item_Useless rb
+    ; A uselessly empty struct!
+    ; Still exists for the sake of `sizeof`
+    struct Item_Useless
+    end_struct
+
+def Item_Healing rb
+    struct Item_Healing
+        bytes 1, Amount
+    end_struct
+
+def Item_Weapon rb
+    struct Item_Weapon
+        bytes 1, Damage
+        bytes 1, Durability
+    end_struct
+
+def maxof_Item rb
+    struct Item
+        ; This should be one of `Item_Useless`, `Item_Healing`, or `Item_Weapon`.
+        bytes 1, Discriminant
+        ; `Contents` is the same size as the largest `case` of the enum.
+        ; In this example, the largest case happens to be `Item_Weapon`.
+        bytes sizeof_Item_Weapon, Contents
+    end_struct
+```
+
 #### Defined constants
 
 A struct's definition has one constant defined per member, which indicates its offset (in bytes) from the beginning of the struct.
@@ -187,84 +257,45 @@ It's possible to copy-paste a few calls to `dstruct` to create an array, but `ds
 Its first argument is the number of structs to define, and the next two are passed as-is to `dstruct`, except that a decimal index is appended to the struct name.
 `dstructs` does not support data arguments; make manual calls to `dstruct` for that—you would have to pass all the data arguments individually anyway.
 
-#### Declaring an enum
+#### Defining data from an enum
 
-An enum is traditionally a list of constants assigned unique and contiguous values.
-The `enum` macro may be used for this purpose:
+Much like `dstruct`, enums can be created using the `denum` macro:
 
-```asm
-    enum Item
-        case Useless
-        case Healing
-        case Weapon
-    end_enum
+```
+    denum Item, Useless
 ```
 
-This is equivalent to the following `def`s:
+For a "unit" enum, this is equivalent to the value of the enum discriminant:
 
-```asm
-rsreset
-def Item_Useless rb
-def Item_Healing rb
-def Item_Weapon rb
-def maxof_Item rb
+```
+    db Item_Useless
 ```
 
-However, `enum` `case`s may also have structures associated with them.
+However, enum variants that contain additional fields may initialize them via this macro,
+using the same syntax as `dstructs`:
 
-
-```asm
-    enum Item
-        case Useless
-        case Healing
-            ; The "body" of a case is just like any other `struct` declaration.
-            bytes 1, Amount
-        case Weapon
-            bytes 1, Damage
-            bytes 1, Durability
-    end_enum
+```
+    denum Item, Weapon, .Damage=10, .Durability=100
 ```
 
-This is equivalent to the following structure declarations:
+This is equivalent to manually defining a discriminant followed by a `dstruct` invocation:
 
-```asm
-rsreset
-def Item_Useless rb
-    ; A uselessly empty struct!
-    ; Still exists for the sake of `sizeof`
-    struct Item_Useless
-    end_struct
-
-def Item_Healing rb
-    struct Item_Healing
-        bytes 1, Amount
-    end_struct
-
-def Item_Weapon rb
-    struct Item_Weapon
-        bytes 1, Damage
-        bytes 1, Durability
-    end_struct
-
-def maxof_Item rb
-    struct Item
-        ; This should be one of `Item_Useless`, `Item_Healing`, or `Item_Weapon`.
-        bytes 1, Discriminant
-        ; `Contents` is the same size as the largest `case` of the enum.
-        ; In this example, the largest case happens to be `Item_Weapon`.
-        bytes sizeof_Item_Weapon, Contents
-    end_struct
 ```
+    db Item_Weapon
+    dstruct Item_Weapon, .Damage=10, .Durability=100
+```
+
+Note that the `denum` macro automatically respects size of the enum's discriminant,
+as described in the next section.
 
 #### Changing the type of an enum's discriminant.
 
-Sometimes you may need the enum's `Discriminant` field to be defined as something other than `bytes`
+Sometimes you may need the enum's `Discriminant` field to be defined as something other than a single byte
 (for example, to support more than 256 cases).
-Should the need arise,
-you can change the type of an enum's discriminant by passing a new type as the second argument to `enum`:
+Should the need arise you can change the type of an enum's discriminant by passing `byte`, `word`, or `long` as the second argument to `enum`:
 
 ```asm
-    enum Number, words
+    enum Number, word
         case One
         case Two
         case Three
