@@ -187,6 +187,96 @@ It's possible to copy-paste a few calls to `dstruct` to create an array, but `ds
 Its first argument is the number of structs to define, and the next two are passed as-is to `dstruct`, except that a decimal index is appended to the struct name.
 `dstructs` does not support data arguments; make manual calls to `dstruct` for that—you would have to pass all the data arguments individually anyway.
 
+#### Declaring an enum
+
+An enum is traditionally a list of constants assigned unique and contiguous values.
+The `enum` macro may be used for this purpose:
+
+```asm
+    enum Item
+        case Useless
+        case Healing
+        case Weapon
+    end_enum
+```
+
+This is equivalent to the following `def`s:
+
+```asm
+rsreset
+def Item_Useless rb
+def Item_Healing rb
+def Item_Weapon rb
+def maxof_Item rb
+```
+
+However, `enum` `case`s may also have structures associated with them.
+
+
+```asm
+    enum Item
+        case Useless
+        case Healing
+            ; The "body" of a case is just like any other `struct` declaration.
+            bytes 1, Amount
+        case Weapon
+            bytes 1, Damage
+            bytes 1, Durability
+    end_enum
+```
+
+This is equivalent to the following structure declarations:
+
+```asm
+rsreset
+def Item_Useless rb
+    ; A uselessly empty struct!
+    ; Still exists for the sake of `sizeof`
+    struct Item_Useless
+    end_struct
+
+def Item_Healing rb
+    struct Item_Healing
+        bytes 1, Amount
+    end_struct
+
+def Item_Weapon rb
+    struct Item_Weapon
+        bytes 1, Damage
+        bytes 1, Durability
+    end_struct
+
+def maxof_Item rb
+    struct Item
+        ; This should be one of `Item_Useless`, `Item_Healing`, or `Item_Weapon`.
+        bytes 1, Discriminant
+        ; `Contents` is the same size as the largest `case` of the enum.
+        ; In this example, the largest case happens to be `Item_Weapon`.
+        bytes sizeof_Item_Weapon, Contents
+    end_struct
+```
+
+#### Changing the type of an enum's discriminant.
+
+Sometimes you may need the enum's `Discriminant` field to be defined as something other than `bytes`
+(for example, to support more than 256 cases).
+Should the need arise,
+you can change the type of an enum's discriminant by passing a new type as the second argument to `enum`:
+
+```asm
+    enum Number, words
+        case One
+        case Two
+        case Three
+        ; ...
+        case TwoHundredAndFiftySix
+        case TwoHundredAndFiftySeven
+        ; ...
+        case SixtyFiveThousandFiveHundredAndFiftyFive
+        case SixtyFiveThousandFiveHundredAndFiftySix
+    end_enum
+```
+
 ## Credits
 
 Written by [ISSOtm](https://github.com/ISSOtm) and [contributors](https://github.com/ISSOtm/rgbds-structs/graphs/contributors).
