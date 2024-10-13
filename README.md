@@ -262,12 +262,14 @@ Its first argument is the number of structs to define, and the next two are pass
 Much like `dstruct`, enums can be created using the `denum` macro:
 
 ```
-    denum Item, Useless
+    ; Define a useless item called "Stick"
+    denum Item, Useless, Stick
 ```
 
 For a "unit" enum, this is equivalent to the value of the enum discriminant:
 
 ```
+Stick::
     db Item_Useless
 ```
 
@@ -275,14 +277,16 @@ However, enum variants that contain additional fields may initialize them via th
 using the same syntax as `dstructs`:
 
 ```
-    denum Item, Weapon, .Damage=10, .Durability=100
+    ; Define a weapon item called "Sword"
+    denum Item, Weapon, Sword, .Damage=10, .Durability=100
 ```
 
 This is equivalent to manually defining a discriminant followed by a `dstruct` invocation:
 
 ```
+Weapon::
     db Item_Weapon
-    dstruct Item_Weapon, .Damage=10, .Durability=100
+    dstruct Item_Weapon, _Weapon, .Damage=10, .Durability=100
 ```
 
 Note that the `denum` macro automatically respects size of the enum's discriminant,

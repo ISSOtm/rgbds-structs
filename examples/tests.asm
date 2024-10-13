@@ -8,37 +8,37 @@ INCLUDE "../structs.inc"
 
 SECTION "Stats", ROM0
 
-	struct Stats
-	bytes 8, FirstName
-	bytes 8, LastName
-	bytes 1, HP
-	bytes 1, MaxHP
-	end_struct
+    struct Stats
+        bytes 8, FirstName
+        bytes 8, LastName
+        bytes 1, HP
+        bytes 1, MaxHP
+    end_struct
 
-	dstruct Stats, _PartyMember, "foo", "bar", 100, 100
-	dstruct Stats, _PartyMember2, .FirstName="foo", .LastName="bar", .HP=100, .MaxHP=100
-	dstruct Stats, _PartyMember3, .HP=100, .LastName="bar", .MaxHP=100, .FirstName="foo"
+    dstruct Stats, _PartyMember, "foo", "bar", 100, 100
+    dstruct Stats, _PartyMember2, .FirstName="foo", .LastName="bar", .HP=100, .MaxHP=100
+    dstruct Stats, _PartyMember3, .HP=100, .LastName="bar", .MaxHP=100, .FirstName="foo"
 
 
-	struct Multi
-	bytes 2, test
-	end_struct
+    struct Multi
+        bytes 2, test
+    end_struct
 
-	dstruct Multi, Anon, 1\, 2
-	dstruct Multi, Named, .test=1\, 2
+    dstruct Multi, Anon, 1\, 2
+    dstruct Multi, Named, .test=1\, 2
 
-	struct Extended
-	bytes 27, FirstField
-	extends Stats
-	extends Stats, Player
-	end_struct
+    struct Extended
+        bytes 27, FirstField
+        extends Stats
+        extends Stats, Player
+    end_struct
 
-	dstruct Extended, _MyExtendedStruct
-	dstruct Extended, _MyExtendedStruct2, "debug test", "foo", "bar", 100, 100, "foo", "bar", 100, 100
-	dstruct Extended, _MyExtendedStruct3, .FirstField="debug test", .HP=100, .LastName="bar", .MaxHP=100, .FirstName="foo", .Player_FirstName="foo", .Player_LastName="bar", .Player_HP=100, .Player_MaxHP=100
+    dstruct Extended, _MyExtendedStruct
+    dstruct Extended, _MyExtendedStruct2, "debug test", "foo", "bar", 100, 100, "foo", "bar", 100, 100
+    dstruct Extended, _MyExtendedStruct3, .FirstField="debug test", .HP=100, .LastName="bar", .MaxHP=100, .FirstName="foo", .Player_FirstName="foo", .Player_LastName="bar", .Player_HP=100, .Player_MaxHP=100
 
-	ASSERT Extended_FirstName == 27
-	ASSERT Extended_Player_FirstName == 27 + sizeof_Stats
+    ASSERT Extended_FirstName == 27
+    ASSERT Extended_Player_FirstName == 27 + sizeof_Stats
 
     struct Actor
         longs 0, Position
@@ -58,3 +58,17 @@ SECTION "Stats", ROM0
 
     ASSERT _Test == _Test_Position
     ASSERT _Test_Position == _Test_YPos
+
+    enum Item
+        case Useless
+        case Healing
+            ; The "body" of a case is just like any other `struct` declaration.
+            bytes 1, Amount
+        case Weapon
+            bytes 1, Damage
+            bytes 1, Durability
+    end_enum
+
+    denum Item, Useless, Stick
+    denum Item, Healing, Potion, .Amount=10
+    denum Item, Weapon, Sword, .Damage=10, .Durability=100
