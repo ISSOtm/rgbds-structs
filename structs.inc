@@ -345,3 +345,48 @@ MACRO dstructs ; nb_structs, struct_type, instance_name
     ENDR
     PURGE STRUCT_ID
 ENDM
+
+macro _maybe_close
+  if ENUM_DISCRIMINANT != 0
+    if sizeof_{STRUCT_NAME} > sizeof_{ENUM_NAME}
+      def sizeof_{ENUM_NAME} = sizeof_{STRUCT_NAME}
+    endc
+    end_struct
+  endc
+endm
+
+; Defines an enum from a list of `case`s.
+;
+; `Type` is an optional argument that determines what storage to use for enum discriminants.
+; This is passed to the internal `struct` invocation, so any alias of `new_field` will work (`bytes`, `words`, `longs`).
+; When absent, it defaults to `bytes`.
+macro enum ; Name, [Type]
+  def ENUM_NAME equs "\1"
+  if _NARGS > 1
+    def ENUM_TYPE equs "\2"
+  else
+    def ENUM_TYPE equs "bytes"
+  endc
+  ; We can't use RB because it'll be clobbered by `struct`
+  def ENUM_DISCRIMINANT = 0
+  def sizeof_\1 = 0
+endm
+
+macro case ; Name
+  _maybe_close
+  def {ENUM_NAME}_\1 equ ENUM_DISCRIMINANT
+  def ENUM_DISCRIMINANT += 1
+  struct {ENUM_NAME}_\1
+endm
+
+macro end_enum
+  _maybe_close
+  def maxof_{ENUM_NAME} equ ENUM_DISCRIMINANT
+  struct {ENUM_NAME}
+    {ENUM_TYPE} 1, Discriminant
+    if sizeof_{ENUM_NAME} > 0
+      bytes sizeof_{ENUM_NAME}, Content
+    endc
+  endc
+  purge ENUM_NAME, ENUM_DISCRIMINANT
+endm
