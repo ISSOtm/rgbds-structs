@@ -345,3 +345,73 @@ MACRO dstructs ; nb_structs, struct_type, instance_name
     ENDR
     PURGE STRUCT_ID
 ENDM
+
+macro _maybe_close
+    if ENUM_DISCRIMINANT != 0
+        def OLD_STRUCT_NAME equs "{STRUCT_NAME}"
+        end_struct
+        if sizeof_{OLD_STRUCT_NAME} > sizeof_{ENUM_NAME}
+            def sizeof_{ENUM_NAME} = sizeof_{OLD_STRUCT_NAME}
+        endc
+        purge OLD_STRUCT_NAME
+    endc
+endm
+
+; Defines an enum from a list of `case`s.
+;
+; `Type` is an optional argument that determines what storage to use for enum discriminants.
+; Valid values for this argument are: `byte`, `word`, `long`.
+; When absent, it defaults to `byte`.
+macro enum ; Name, [Type]
+    def ENUM_NAME equs "\1"
+    if _NARG > 1
+        if !STRCMP("\2", "byte")
+                def typeof_{ENUM_NAME} equs "b"
+        elif !STRCMP("\2", "word")
+                def typeof_{ENUM_NAME} equs "w"
+        elif !STRCMP("\2", "long")
+                def typeof_{ENUM_NAME} equs "l"
+        else
+                FAIL "Unrecognized discriminant type: \2"
+        endc
+    else
+        def typeof_{ENUM_NAME} equs "b"
+    endc
+    ; We can't use RB because it'll be clobbered by `struct`
+    def ENUM_DISCRIMINANT = 0
+    def sizeof_\1 = 0
+endm
+
+macro case ; Name
+    _maybe_close
+    def {ENUM_NAME}_\1 equ ENUM_DISCRIMINANT
+    def ENUM_DISCRIMINANT += 1
+    struct {ENUM_NAME}_\1
+endm
+
+macro end_enum
+    _maybe_close
+    def maxof_{ENUM_NAME} equ ENUM_DISCRIMINANT
+    struct {ENUM_NAME}
+        new_field r{typeof_{ENUM_NAME}}, 1, Discriminant
+        if sizeof_{ENUM_NAME} > 0
+            bytes sizeof_{ENUM_NAME}, Content
+        endc
+        ; `end_struct` will recreate this with the discriminant considered
+        purge sizeof_{ENUM_NAME}
+    end_struct
+    purge ENUM_NAME, ENUM_DISCRIMINANT
+endm
+
+macro denum
+    \3::
+    d{typeof_\1} \1_\2
+    def ENUM_NAME equs "\1_\2"
+    SHIFT 3
+    if _NARG == 0
+        dstruct {ENUM_NAME}, .contents
+    else
+        dstruct {ENUM_NAME}, .contents, \#
+    endc
+    purge ENUM_NAME
+endm
