@@ -23,7 +23,7 @@
 
 
 
-DEF STRUCTS_VERSION equs "4.0.2"
+DEF STRUCTS_VERSION equs "4.0.3"
 MACRO structs_assert
     assert (\1), "rgbds-structs {STRUCTS_VERSION} bug. Please report at https://github.com/ISSOtm/rgbds-structs, and share the above stack trace *and* your code there!"
 ENDM
@@ -87,10 +87,18 @@ ENDM
 
 
 ; Defines a field of N bytes.
-DEF bytes equs "new_field rb,"
-DEF words equs "new_field rw,"
-DEF longs equs "new_field rl,"
-DEF alias equs "new_field rb, 0,"
+MACRO bytes
+    new_field rb, \#
+ENDM
+MACRO words
+    new_field rw, \#
+ENDM
+MACRO longs
+    new_field rl, \#
+ENDM
+MACRO alias
+    new_field rb,0, \#
+ENDM
 
 ; Extends a new struct by an existing struct, effectively cloning its fields.
 MACRO extends ; struct_type[, sub_struct_name]
@@ -139,10 +147,12 @@ ENDM
 
 ; Purges the variables defined by `get_nth_field_info`.
 ; Used internally by `new_field` and `dstruct`.
-DEF purge_nth_field_info equs "PURGE STRUCT_FIELD, STRUCT_FIELD_NAME, STRUCT_FIELD_TYPE, STRUCT_FIELD_SIZE"
+MACRO purge_nth_field_info
+    PURGE STRUCT_FIELD, STRUCT_FIELD_NAME, STRUCT_FIELD_TYPE, STRUCT_FIELD_SIZE
+ENDM
 
 ; Defines a field with a given RS type (`rb`, `rw`, or `rl`).
-; Used internally by `bytes`, `words`, and `longs`.
+; Used internally by `bytes`, `words`, `longs`, and `alias`.
 MACRO new_field ; rs_type, nb_elems, field_name
     IF !DEF(STRUCT_NAME) || !DEF(NB_FIELDS)
         FAIL "Please start defining a struct, using `struct`"
@@ -162,7 +172,7 @@ MACRO new_field ; rs_type, nb_elems, field_name
     ; Compute field size
     DEF {STRUCT_FIELD_SIZE} EQU _RS - {STRUCT_FIELD}
     ; Set properties
-    DEF {STRUCT_FIELD_TYPE} EQUS STRSUB("\1", 2, 1)
+    DEF {STRUCT_FIELD_TYPE} EQUS STRSLICE("\1", 1)
 
     purge_nth_field_info
 
@@ -176,12 +186,12 @@ ENDM
 ; Strips whitespace from the left of a string.
 ; Used internally by `dstruct`.
 MACRO lstrip ; string_variable
-    FOR START_POS, 1, STRLEN("{\1}") + 1
-        IF !STRIN(" \t", STRSUB("{\1}", START_POS, 1))
+    FOR START_POS, STRLEN(#\1)
+        IF STRFIND(" \t", STRSLICE(#\1, START_POS, START_POS + 1)) == -1
             BREAK
         ENDC
     ENDR
-    REDEF \1 EQUS STRSUB("{\1}", START_POS)
+    REDEF \1 EQUS STRSLICE(#\1, START_POS)
     PURGE START_POS
 ENDM
 
@@ -200,13 +210,13 @@ MACRO dstruct ; struct_type, instance_name[, ...]
         FAIL STRFMT("Expected 2 or %u args to `dstruct`, but got {d:_NARG}", 2 + \1_nb_nonaliases)
     ENDC
 
-    ; RGBASM always expands macro args, so `IF _NARG > 2 && STRIN("\3", "=")`
+    ; RGBASM always expands macro args, so `IF _NARG > 2 && STRFIND("\3", "=")`
     ; would error out when there are only two args.
     ; Therefore, the condition is checked here (we can't nest the `IF`s over
     ; there because that would require a duplicated `ELSE`).
-    DEF IS_NAMED_INSTANTIATION = 0
+    def IS_NAMED_INSTANTIATION = 0
     IF _NARG > 2
-        DEF IS_NAMED_INSTANTIATION = !STRCMP(STRSUB("\3", 1, 1), ".") && STRIN("\3", "=")
+        redef IS_NAMED_INSTANTIATION = !STRCMP(STRSLICE("\3", 0, 1), ".") && STRFIND("\3", "=") != -1
     ENDC
 
     IF IS_NAMED_INSTANTIATION
@@ -222,16 +232,16 @@ MACRO dstruct ; struct_type, instance_name[, ...]
 
             ; Ensure that the argument has a name and a value,
             ; separated by an equal sign
-            DEF EQUAL_POS = STRIN("{CUR_ARG}", "=")
-            IF !EQUAL_POS
+            DEF EQUAL_POS = STRFIND("{CUR_ARG}", "=")
+            IF EQUAL_POS == -1
                 FAIL "\"{CUR_ARG}\" is not a named initializer!"
-            ELIF STRCMP(STRSUB("{CUR_ARG}", 1, 1), ".")
+            ELIF STRCMP(STRSLICE("{CUR_ARG}", 0, 1), ".")
                 FAIL "\"{CUR_ARG}\" does not start with a period!"
             ENDC
 
             ; Find out which field the current argument is
             FOR FIELD_ID, \1_nb_fields
-                IF !STRCMP(STRSUB("{CUR_ARG}", 2, EQUAL_POS - 2), "{\1_field{d:FIELD_ID}_name}")
+                IF !STRCMP(STRSLICE("{CUR_ARG}", 1, EQUAL_POS), "{\1_field{d:FIELD_ID}_name}")
                     IF \1_field{d:FIELD_ID}_size == 0
                         FAIL "Cannot initialize an alias"
                     ENDC
@@ -250,7 +260,7 @@ MACRO dstruct ; struct_type, instance_name[, ...]
 
             ; Enclose argument initializers in parentheses so any commas inside
             ; it will not start a new argument
-            DEF FIELD_{d:FIELD_ID}_INITIALIZER EQUS STRCAT("(", STRSUB("{CUR_ARG}", EQUAL_POS + 1), ")")
+            DEF FIELD_{d:FIELD_ID}_INITIALIZER EQUS STRCAT("(", STRSLICE("{CUR_ARG}", EQUAL_POS + 1), ")")
         ENDR
         PURGE ARG_NUM, CUR_ARG
 
@@ -296,7 +306,7 @@ MACRO dstruct ; struct_type, instance_name[, ...]
                     DEF FIELD_INITIALIZER EQUS "\<ARG_NUM>"
                     IF DEF(WAS_NAMED_INSTANTIATION)
                         ; Remove the parentheses that named instantiation placed around the field initializer
-                        REDEF FIELD_INITIALIZER EQUS STRSUB("{FIELD_INITIALIZER}", 2, STRLEN("{FIELD_INITIALIZER}") - 2)
+                        REDEF FIELD_INITIALIZER EQUS STRSLICE("{FIELD_INITIALIZER}", 1, -2)
                     ENDC
                     d{{STRUCT_FIELD_TYPE}} {FIELD_INITIALIZER}
                     PURGE FIELD_INITIALIZER
@@ -315,7 +325,7 @@ MACRO dstruct ; struct_type, instance_name[, ...]
         PURGE FIELD_ID, ARG_NUM, DSTRUCT_SEPARATOR
 
         ; Define instance's properties from struct's
-        IF !STRIN("\2", ".")
+        IF STRFIND("\2", ".") == -1
             DEF \2_nb_fields EQU \1_nb_fields
             DEF sizeof_\2    EQU @ - (\2)
             structs_assert sizeof_\1 == sizeof_\2
