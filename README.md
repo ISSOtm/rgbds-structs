@@ -7,9 +7,10 @@ A [RGBDS](https://rgbds.gbdev.io) macro pack that provides `struct`-like functio
 Please select a version from [the releases](https://github.com/ISSOtm/rgbds-structs/releases), and download either of the "source code" links.
 (If you do not know what a `.tar.gz` file is, download the `.zip` one.)
 
-The [latest rgbds-structs version](https://github.com/ISSOtm/rgbds-structs/releases/latest) is **4.0.2**.
-It will only work with RGBDS 0.6.0 and newer.
-A previous version, [1.3.0](https://github.com/ISSOtm/rgbds-structs/releases/tag/v1.3.0), is confirmed to work with RGBDS 0.3.7, but should also work with versions 0.3.3 and newer.
+The [latest rgbds-structs version](https://github.com/ISSOtm/rgbds-structs/releases/latest) is **4.1.0**.
+It will only work with RGBDS 0.9.2 and newer.
+The previous version, [4.0.2](https://github.com/ISSOtm/rgbds-structs/releases/tag/v4.0.2), works with RGBDS 0.6.0 and newer.
+An older version, [1.3.0](https://github.com/ISSOtm/rgbds-structs/releases/tag/v1.3.0), is confirmed to work with RGBDS 0.3.7, but should also work with versions 0.3.3 and newer.
 If you find a compatibility issue, [please file it here](https://github.com/ISSOtm/rgbds-structs/issues/new).
 
 ## Installing
@@ -35,7 +36,7 @@ You can also easily enforce this in your code, using the `rgbds_structs_version`
 1. Begin the declaration with `struct StructName`.
    This need not be in a `SECTION`, and it is rather recommended to declare structs in header files, as with C.
 2. Then, declare each member, using the macros `bytes`, `words`, and `longs`.
-   The declaration style is inspired by [RGBASM's `_RS` command family](https://rgbds.gbdev.io/docs/v0.5.2/rgbasm.5/#Offset_constants): the macro name gives the unit type, the first argument specifies how many units the member uses, and the second argument gives the member name.
+   The declaration style is inspired by [RGBASM's `_RS` command family](https://rgbds.gbdev.io/docs/rgbasm.5#Offset_constants): the macro name gives the unit type, the first argument specifies how many units the member uses, and the second argument gives the member name.
 3. Finally, you must close the declaration with `end_struct`.
    This is required to properly define all of the struct's constants, and to be able to declare another struct (which will otherwise fail with a descriptive error message).
    Please note that forgetting to add an `end_struct` does not always yield any error messages, so please be careful.
@@ -45,25 +46,24 @@ Please do not use anything other than the prescribed macros between `struct` and
 Example of correct usage:
 
 ```asm
-    ; RGBASM requires whitespace before the macro name
-    struct NPC
-    words 1, YPos         ;  2 bytes
-    words 1, XPos         ;  2 bytes
-    bytes 1, YBox         ;  1 byte
-    bytes 1, XBox         ;  1 byte
-    bytes 6, Name         ;  6 bytes
-    longs 4, MovementData ; 16 bytes
-    end_struct
+struct NPC
+	words 1, YPos         ;  2 bytes
+	words 1, XPos         ;  2 bytes
+	bytes 1, YBox         ;  1 byte
+	bytes 1, XBox         ;  1 byte
+	bytes 6, Name         ;  6 bytes
+	longs 4, MovementData ; 16 bytes
+end_struct
 ```
 
 Note that no padding is inserted between members by rgbds-structs itself; insert "throwaway" members for that.
 
 ```asm
-    struct Example
-        bytes 3, First
-        bytes 1, Padding  ; like this
-        words 2, Second
-    end_struct
+struct Example
+	bytes 3, First
+	bytes 1, Padding  ; like this
+	words 2, Second
+end_struct
 ```
 
 (Some like to insert an extra level of indentation for member definitions. This is not required, but may help with readability.)
@@ -73,13 +73,13 @@ Note also that whitespace is **not** allowed in a struct or member's name.
 Sometimes it's useful to give multiple names to the same area of memory, which can be accomplished with `alias`.
 
 ```asm
-    struct Actor
-        words 1, YPos
-        words 1, XPos
-        ; Since `alias` is used, the following field will have 2 names
-        alias Money ; If this actor is the player, store how much money they have.
-        words 1, Target ; If this actor is an enemy, store their target actor.
-    end_struct
+struct Actor
+	words 1, YPos
+	words 1, XPos
+	; Since `alias` is used, the following field will have 2 names
+	alias Money ; If this actor is the player, store how much money they have.
+	words 1, Target ; If this actor is an enemy, store their target actor.
+end_struct
 ```
 
 Passing a size of 0 to any of `bytes`, `words`, or `longs` works the same.
@@ -87,16 +87,16 @@ Passing a size of 0 to any of `bytes`, `words`, or `longs` works the same.
 `extends` can be used to nest a structure within another.
 
 ```asm
-    struct Item
-        words 1, Name
-        words 1, Graphics
-        bytes 1, Type
-    end_struct
+struct Item
+	words 1, Name
+	words 1, Graphics
+	bytes 1, Type
+end_struct
 
-    struct HealingItem
-        extends Item
-        bytes Strength
-    end_struct
+struct HealingItem
+	extends Item
+	bytes Strength
+end_struct
 ```
 
 This effectively copies the members of the source struct, meaning that you can now use `HealingItem_Name` as well as `HealingItem_Strength`.
@@ -104,10 +104,10 @@ This effectively copies the members of the source struct, meaning that you can n
 If a second argument is provided, the copied members will be prefixed with this string.
 
 ```asm
-    struct SaveFile
-        longs 1, Checksum
-        extends NPC, Player
-    end_struct
+struct SaveFile
+	longs 1, Checksum
+	extends NPC, Player
+end_struct
 ```
 
 This creates constants like `SaveFile_Player_Name`.
@@ -123,7 +123,7 @@ Two additional constants are defined: `sizeof_NPC` contains the struct's total s
 
 Be careful that `dstruct` relies on all of these constants and a couple more; `dstruct` may break in unexpected ways if tampering with them, which includes `PURGE`.
 
-None of these constants are exported by default, but you can [`export` them manually](https://rgbds.gbdev.io/docs/v0.5.2/rgbasm.5/#Exporting_and_importing_symbols), or `INCLUDE` the struct definition(s) everywhere the constants are to be used.
+None of these constants are exported by default, but you can [`export` them manually](https://rgbds.gbdev.io/docs/rgbasm.5#Exporting_and_importing_symbols), or `INCLUDE` the struct definition(s) everywhere the constants are to be used.
 Since `dstruct` and family require the constants to be defined at assembling time, those macros require the former solution.
 However, the latter solution may decrease build times if you have a lot of source files.
 
@@ -136,8 +136,7 @@ If you want the constants to be exported by default, define symbol `STRUCTS_EXPO
 To allocate a struct in memory, use the `dstruct StructName, VarName` macro. For example:
 
 ```asm
-    ; Again, remember to put whitespace before the macro name
-    dstruct NPC, Player
+dstruct NPC, Player
 ```
 
 This will define the following labels: `Player` (pointing to the struct's first byte), `Player_YPos`, `Player_XPos`, `Player_YBox`, etc. (all pointing to the struct's corresponding attribute).
@@ -157,7 +156,7 @@ Like structs' constants, these are not exported unless `STRUCTS_EXPORT_CONSTANTS
 
 #### Defining data from a struct
 
-The use of `dstruct` described above makes it act like [`ds`](https://rgbds.gbdev.io/docs/v0.5.2/rgbasm.5/#Statically_allocating_space_in_RAM) (meaning, it can be used in RAM, and will be filled with padding bytes if used in ROM).
+The use of `dstruct` described above makes it act like [`ds`](https://rgbds.gbdev.io/docs/rgbasm.5#Statically_allocating_space_in_RAM) (meaning, it can be used in RAM, and will be filled with padding bytes if used in ROM).
 However, it is possible to use `dstruct` to define data without having to resort to piles of `db`s and `dw`s.
 
 ```asm

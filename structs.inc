@@ -23,7 +23,7 @@
 
 
 
-def STRUCTS_VERSION equs "4.0.3"
+def STRUCTS_VERSION equs "4.1.0"
 MACRO structs_assert
 	assert (\1), "rgbds-structs {STRUCTS_VERSION} bug. Please report at https://github.com/ISSOtm/rgbds-structs, and share the above stack trace *and* your code there!"
 ENDM
