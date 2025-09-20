@@ -8,7 +8,7 @@ INCLUDE "../structs.inc"
 	; Note that everything is happening outside of a `SECTION`
 
 
-	; Defines a sprite as it is in OAM
+; Defines a sprite as it is in OAM
 struct Sprite
 	bytes 1, YPos ; Indenting is optional, but recommended
 	bytes 1, XPos
@@ -16,7 +16,7 @@ struct Sprite
 	bytes 1, Attr
 end_struct
 
-	; Defines an NPC, as I used in Aevilia (https://github.com/ISSOtm/Aevilia-GB/blob/master/macros/memory.asm#L10-L25)
+; Defines an NPC, as I used in Aevilia (https://github.com/ISSOtm/Aevilia-GB/blob/master/macros/memory.asm#L10-L25)
 struct NPC
 	words 1, YPos
 	words 1, XPos
@@ -37,12 +37,18 @@ struct NPC
 	bytes 1, XDispl
 end_struct
 
-	; Defines a 3-byte CGB palette
+; Defines a 3-byte CGB palette
 struct RawPalette
 	bytes 3, Color0
 	bytes 3, Color1
 	bytes 3, Color2
 	bytes 3, Color3
+end_struct
+
+; Defines a pair of pointers
+struct Pics
+	words 1, Front
+	words 1, Back
 end_struct
 
 
@@ -95,6 +101,11 @@ Routine::
 		.Color1=$1E\,$0A\,$06, \ ; Multi-byte fields can take a
 		.Color2=$1F\,$13\,$16, \ ; sequence of bytes to repeat
 		.Color3=$1F, .Color0=$00
+
+	; Anonymous instantiation does not automatically define labels
+	Pics:: dstruct_anon Pics, .Front=.Front, .Back=.Back
+	.Front:: ds 7 * 7 * 16, $00
+	.Back::  ds 5 * 5 * 16, $00
 
 
 memcpy_small:

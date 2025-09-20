@@ -277,14 +277,16 @@ MACRO dstruct ; struct_type, instance_name[, ...]
 
 		; Do the nested ordered instantiation
 		def WAS_NAMED_INSTANTIATION = 1
-		dstruct {ORDERED_ARGS} ; purges IS_NAMED_INSTANTIATION
+		dstruct {ORDERED_ARGS}, ; purges IS_NAMED_INSTANTIATION
 		purge ORDERED_ARGS, WAS_NAMED_INSTANTIATION
 
 	ELSE
 		; This is an ordered instantiation, not a named one.
 
-		; Define the struct's root label
-		\2::
+		; Define the struct's root label unless it's anonymous.
+		IF STRLEN("\2")
+			\2::
+		ENDC
 
 		IF def(STRUCT_SEPARATOR)
 			def DSTRUCT_SEPARATOR equs "{STRUCT_SEPARATOR}"
@@ -296,8 +298,15 @@ MACRO dstruct ; struct_type, instance_name[, ...]
 		FOR FIELD_ID, \1_nb_fields
 			get_nth_field_info \1, FIELD_ID
 
-			; Define the label for the field
-			\2_{{STRUCT_FIELD_NAME}}::
+			IF STRLEN("\2")
+				; Define the label for the field
+				\2_{{STRUCT_FIELD_NAME}}::
+				def STRUCT_FIELD_START EQUS "\2_{{STRUCT_FIELD_NAME}}"
+			ELSE
+				; Label the field anonymously for padding calculations
+				:
+				def STRUCT_FIELD_START EQUS ":-"
+			ENDC
 
 			IF STRUCT_FIELD_SIZE != 0 ; Skip aliases
 				; Declare the space for the field
@@ -315,18 +324,19 @@ MACRO dstruct ; struct_type, instance_name[, ...]
 				ENDC
 				; Add padding as necessary after the provided initializer
 				; (possibly all of it, especially for RAM use)
-				IF {STRUCT_FIELD_SIZE} < @ - \2_{{STRUCT_FIELD_NAME}}
-					fail STRFMT("Initializer for %s is %u bytes, expected %u at most", "\2_{{STRUCT_FIELD_NAME}}", @ - \2_{{STRUCT_FIELD_NAME}}, {STRUCT_FIELD_SIZE})
+				IF {STRUCT_FIELD_SIZE} < @ - {STRUCT_FIELD_START}
+					fail STRFMT("Initializer for %s is %u bytes, expected %u at most", "{STRUCT_FIELD_START}", @ - {STRUCT_FIELD_START}, {STRUCT_FIELD_SIZE})
 				ENDC
-				ds {STRUCT_FIELD_SIZE} - (@ - \2_{{STRUCT_FIELD_NAME}})
+				ds {STRUCT_FIELD_SIZE} - (@ - {STRUCT_FIELD_START})
 			ENDC
 
 			purge_nth_field_info
+			purge STRUCT_FIELD_START
 		ENDR
 		purge FIELD_ID, ARG_NUM, DSTRUCT_SEPARATOR
 
 		; Define instance's properties from struct's
-		IF STRFIND("\2", ".") == -1
+		IF STRLEN("\2") && STRFIND("\2", ".") == -1
 			def \2_nb_fields EQU \1_nb_fields
 			def sizeof_\2    EQU @ - (\2)
 			structs_assert sizeof_\1 == sizeof_\2
@@ -340,19 +350,34 @@ MACRO dstruct ; struct_type, instance_name[, ...]
 	ENDC
 ENDM
 
+; Allocates space for an anonymous struct in memory.
+; Acts like `dstruct` but without defining any labels for the struct or its fields.
+MACRO dstruct_anon ; struct_type[, ...]
+	def DSTRUCT_ANON_NAME EQUS "\1"
+	shift
+	dstruct {DSTRUCT_ANON_NAME}, , \#
+	purge DSTRUCT_ANON_NAME
+ENDM
+
 
 ; Allocates space for an array of structs in memory.
 ; Each struct will have the index appended to its name **as decimal**.
 ; For example: `dstructs 32, NPC, wNPC` will define `wNPC0`, `wNPC1`, and so on until `wNPC31`.
 ; This is a change from the previous version of rgbds-structs, where the index was uppercase hexadecimal.
+; If the third argument is not given, no names are defined, and the structs are anonymous.
+; For example: `dstructs 32, NPC` will repeat `dstruct_anon NPC` 32 times.
 ; Does not support data declarations because I think each struct should be defined individually for that purpose.
-MACRO dstructs ; nb_structs, struct_type, instance_name
-	IF _NARG != 3
-		fail "`dstructs` only takes 3 arguments!"
+MACRO dstructs ; nb_structs, struct_type[, instance_name]
+	IF _NARG == 2
+		REPT \1
+			dstruct_anon \2
+		ENDR
+	ELIF _NARG == 3
+		FOR STRUCT_ID, \1
+			dstruct \2, \3{d:STRUCT_ID}
+		ENDR
+		purge STRUCT_ID
+	ELSE
+		fail "Expected 2 or 3 args to `dstructs`, but got {d:_NARG}"
 	ENDC
-
-	FOR STRUCT_ID, \1
-		dstruct \2, \3{d:STRUCT_ID}
-	ENDR
-	purge STRUCT_ID
 ENDM
