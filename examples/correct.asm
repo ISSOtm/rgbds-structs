@@ -1,7 +1,7 @@
 INCLUDE "../structs.inc"
 
 	; Check for the expected RGBDS-structs version
-	rgbds_structs_version 4.0.2
+	rgbds_structs_version 4.1.0
 
 
 	; Struct declarations (ideally in a separate file, but grouped here for simplicity)
