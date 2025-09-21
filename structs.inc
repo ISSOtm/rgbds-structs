@@ -316,7 +316,7 @@ MACRO dstruct ; struct_type, instance_name[, ...]
 					IF def(WAS_NAMED_INSTANTIATION)
 						; Remove the parentheses that named instantiation placed around the field initializer.
 						; This is necessary so that strings are correctly interpreted.
-						redef FIELD_INITIALIZER EQUS STRSLICE("{FIELD_INITIALIZER}", 1, -2)
+						redef FIELD_INITIALIZER EQUS STRSLICE("{FIELD_INITIALIZER}", 1, -1)
 					ENDC
 					d{{STRUCT_FIELD_TYPE}} {FIELD_INITIALIZER}
 					purge FIELD_INITIALIZER
